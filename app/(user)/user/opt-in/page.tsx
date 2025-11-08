@@ -62,22 +62,37 @@ export default function OptInPage() {
         throw new Error(errorMsg)
       }
 
-      const { sessionId, clientId } = sessionData
+      const { sessionId, clientId: clientIdFromApi, environment: envFromApi } = sessionData
 
-      // Determine environment - must match the client ID
-      const environment = (env.KNOT_ENVIRONMENT as 'development' | 'production') || 'development'
+      // Use client ID from API, or fallback to env variable
+      const clientId = clientIdFromApi || env.NEXT_PUBLIC_KNOT_CLIENT_ID
+      
+      // Determine environment - use from API response or fallback to env
+      const environment = (envFromApi || env.KNOT_ENVIRONMENT || 'development') as 'development' | 'production'
       
       // Log what we're passing to SDK for debugging
       console.log('Opening Knot SDK with:', {
         sessionId: sessionId ? `${sessionId.substring(0, 8)}...` : 'missing',
         clientId: clientId ? `${clientId.substring(0, 8)}...` : 'missing',
+        clientIdSource: clientIdFromApi ? 'from API' : 'from env',
         environment,
         merchantId,
+        envClientId: env.NEXT_PUBLIC_KNOT_CLIENT_ID ? 'set' : 'not set',
       })
 
       // Validate client ID is present
       if (!clientId || clientId.trim() === '') {
-        throw new Error('Client ID is missing from session response')
+        console.error('Client ID validation failed:', {
+          clientIdFromApi,
+          envClientId: env.NEXT_PUBLIC_KNOT_CLIENT_ID,
+          sessionData,
+        })
+        throw new Error('Client ID is missing. Please check your environment variables.')
+      }
+
+      // Validate session ID is present
+      if (!sessionId || sessionId.trim() === '') {
+        throw new Error('Session ID is missing from session response')
       }
 
       // Open Knot SDK

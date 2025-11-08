@@ -58,20 +58,52 @@ export function useKnotSDK() {
       return
     }
 
-    knotapiRef.current.open({
-      sessionId: config.sessionId,
-      clientId: config.clientId,
+    // Validate required fields
+    if (!config.sessionId || config.sessionId.trim() === '') {
+      console.error('Knot SDK: sessionId is required but missing')
+      callbacks.onError?.('transaction_link', 'MISSING_SESSION_ID', 'Session ID is required')
+      return
+    }
+
+    if (!config.clientId || config.clientId.trim() === '') {
+      console.error('Knot SDK: clientId is required but missing', {
+        clientId: config.clientId,
+        config,
+      })
+      callbacks.onError?.('transaction_link', 'MISSING_CLIENT_ID', 'Client ID is required')
+      return
+    }
+
+    console.log('Knot SDK: Opening with validated config', {
+      hasSessionId: !!config.sessionId,
+      hasClientId: !!config.clientId,
+      clientIdLength: config.clientId.length,
       environment: config.environment,
-      product: config.product,
-      merchantIds: config.merchantIds,
-      entryPoint: config.entryPoint,
-      useCategories: config.useCategories ?? true,
-      useSearch: config.useSearch ?? true,
-      onSuccess: callbacks.onSuccess,
-      onError: callbacks.onError,
-      onEvent: callbacks.onEvent,
-      onExit: callbacks.onExit,
     })
+
+    try {
+      knotapiRef.current.open({
+        sessionId: config.sessionId,
+        clientId: config.clientId,
+        environment: config.environment,
+        product: config.product,
+        merchantIds: config.merchantIds,
+        entryPoint: config.entryPoint,
+        useCategories: config.useCategories ?? true,
+        useSearch: config.useSearch ?? true,
+        onSuccess: callbacks.onSuccess,
+        onError: callbacks.onError,
+        onEvent: callbacks.onEvent,
+        onExit: callbacks.onExit,
+      })
+    } catch (error) {
+      console.error('Knot SDK: Error calling open:', error)
+      callbacks.onError?.(
+        'transaction_link',
+        'SDK_ERROR',
+        error instanceof Error ? error.message : 'Unknown error'
+      )
+    }
   }
 
   return { open, isReady }
