@@ -7,9 +7,20 @@ import { env } from '@/config/env'
 
 export async function POST(request: Request) {
   try {
-    const user = await getAuthUser()
-    if (!user) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    // In mock mode, create a mock user
+    const MOCK_MODE = process.env.MOCK_MODE === 'true' || process.env.NODE_ENV === 'development'
+    
+    let user
+    if (MOCK_MODE) {
+      user = {
+        id: 'mock-user-id-' + Date.now(),
+        email: 'mock@example.com',
+      }
+    } else {
+      user = await getAuthUser()
+      if (!user) {
+        return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+      }
     }
 
     const body = await request.json()
@@ -22,17 +33,27 @@ export async function POST(request: Request) {
       )
     }
 
-    const supabase = await createClient()
+    let dbUser
+    if (MOCK_MODE) {
+      dbUser = {
+        id: user.id,
+        email: user.email || '',
+        role: 'user',
+      }
+    } else {
+      const supabase = await createClient()
 
-    // Get user from database
-    const { data: dbUser } = await supabase
-      .from('users')
-      .select('*')
-      .eq('id', user.id)
-      .single()
+      // Get user from database
+      const { data: existingUser } = await supabase
+        .from('users')
+        .select('*')
+        .eq('id', user.id)
+        .single()
 
-    if (!dbUser) {
-      return NextResponse.json({ error: 'User not found' }, { status: 404 })
+      if (!existingUser) {
+        return NextResponse.json({ error: 'User not found' }, { status: 404 })
+      }
+      dbUser = existingUser
     }
 
     // Create Basic Auth header
@@ -81,8 +102,9 @@ export async function POST(request: Request) {
 
     const syncData = await syncResponse.json()
 
-    // Store transactions in cache if needed
-    if (syncData.transactions && Array.isArray(syncData.transactions)) {
+    // Store transactions in cache if needed (skip in mock mode)
+    if (!MOCK_MODE && syncData.transactions && Array.isArray(syncData.transactions)) {
+      const supabase = await createClient()
       for (const transaction of syncData.transactions) {
         await supabase.from('transaction_cache').upsert({
           user_id: dbUser.id,

@@ -4,14 +4,14 @@ import { useState } from 'react'
 import { useKnotSDK } from '@/lib/knot/sdk'
 import { env } from '@/config/env'
 
-// Merchant IDs from Knot - Only Instacart and Uber Eats
+// Merchant IDs from Knot - Only DoorDash and Uber Eats
 const MERCHANT_IDS: Record<string, number> = {
-  instacart: 40,
+  doordash: 19,
   ubereats: 36,
 }
 
 const MERCHANT_DISPLAY_NAMES: Record<string, string> = {
-  instacart: 'Instacart',
+  doordash: 'DoorDash',
   ubereats: 'Uber Eats',
 }
 
