@@ -77,7 +77,7 @@ export function AreaInsights({ location, category, onClose }: AreaInsightsProps)
               </TabsList>
               <TabsContent value="daily" className="mt-4">
                 <div className="space-y-2">
-                  {insights.dailySpending.map((day, i) => (
+                  {insights.dailySpending.map((day: { day: string; amount: number }, i: number) => (
                     <div key={i} className="flex justify-between items-center">
                       <span className="text-sm text-gray-600">{day.day}</span>
                       <span className="text-gray-900">${day.amount.toLocaleString()}</span>
@@ -111,7 +111,7 @@ export function AreaInsights({ location, category, onClose }: AreaInsightsProps)
           </CardHeader>
           <CardContent>
             <div className="space-y-4">
-              {insights.popularItems.map((item, index) => (
+              {insights.popularItems.map((item: { name: string; orders: number; price: number; growth: number }, index: number) => (
                 <div key={index} className="flex items-start gap-3">
                   <div className="flex-shrink-0 w-8 h-8 bg-gradient-to-br from-blue-500 to-purple-600 rounded-lg flex items-center justify-center">
                     <span className="text-white text-sm">#{index + 1}</span>
