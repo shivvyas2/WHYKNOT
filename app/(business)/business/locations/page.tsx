@@ -17,7 +17,7 @@ const MapContainer = dynamic(() => import('@/components/business/MapContainer').
 export default function LocationsPage() {
   const router = useRouter()
   const [selectedLocation, setSelectedLocation] = useState<[number, number]>([
-    40.7128, -74.0060,
+    40.3504, -74.6571,
   ])
   const [selectedCategory, setSelectedCategory] = useState<string>('all')
   const [clickedArea, setClickedArea] = useState<{ lat: number; lng: number } | null>(

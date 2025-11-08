@@ -19,7 +19,7 @@ export function MapContainer({ center, category, onAreaClick }: MapContainerProp
   const heatLayerRef = useRef<any>(null);
   const restaurantMarkersRef = useRef<L.Marker<any>[]>([]);
   const fetchTimerRef = useRef<number | null>(null);
-  const minZoomForRestaurants = 10;
+  const minZoomForRestaurants = 8;
 
   useEffect(() => {
     if (typeof window === 'undefined') return
@@ -177,7 +177,7 @@ export function MapContainer({ center, category, onAreaClick }: MapContainerProp
       console.warn('Failed to fetch restaurants', err);
     }
   }
-
+//clean restuarant names before displaying with leaflet
   function escapeHtml(str: string) {
     return str.replace(/[&<>"']/g, (s) => ({
       '&': '&amp;',
