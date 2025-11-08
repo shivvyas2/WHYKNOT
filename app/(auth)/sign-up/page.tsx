@@ -1,9 +1,12 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
+
+// MOCK MODE: Set to true to bypass authentication
+const MOCK_MODE = true
 
 export default function SignUpPage() {
   const [email, setEmail] = useState('')
@@ -14,8 +17,22 @@ export default function SignUpPage() {
   const router = useRouter()
   const supabase = createClient()
 
+  // MOCK MODE: Auto-redirect based on role
+  useEffect(() => {
+    if (MOCK_MODE) {
+      router.push(role === 'business' ? '/business' : '/user')
+    }
+  }, [router, role])
+
   const handleSignUp = async (e: React.FormEvent) => {
     e.preventDefault()
+    
+    // MOCK MODE: Auto-redirect based on role
+    if (MOCK_MODE) {
+      router.push(role === 'business' ? '/business' : '/user')
+      return
+    }
+
     setLoading(true)
     setError(null)
 

@@ -1,9 +1,12 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
+
+// MOCK MODE: Set to true to bypass authentication
+const MOCK_MODE = true
 
 export default function SignInPage() {
   const [email, setEmail] = useState('')
@@ -13,8 +16,22 @@ export default function SignInPage() {
   const router = useRouter()
   const supabase = createClient()
 
+  // MOCK MODE: Auto-redirect to user dashboard
+  useEffect(() => {
+    if (MOCK_MODE) {
+      router.push('/user')
+    }
+  }, [router])
+
   const handleSignIn = async (e: React.FormEvent) => {
     e.preventDefault()
+    
+    // MOCK MODE: Auto-redirect
+    if (MOCK_MODE) {
+      router.push('/user')
+      return
+    }
+
     setLoading(true)
     setError(null)
 
