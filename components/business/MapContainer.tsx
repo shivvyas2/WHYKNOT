@@ -6,15 +6,7 @@ import 'leaflet/dist/leaflet.css'
 import 'leaflet.heat'
 import { generateHeatmapData } from '@/utils/mockData'
 
-// Fix Leaflet default icon paths for Next.js
-if (typeof window !== 'undefined') {
-  delete (L.Icon.Default.prototype as any)._getIconUrl
-  L.Icon.Default.mergeOptions({
-    iconUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon.png',
-    iconRetinaUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon-2x.png',
-    shadowUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-shadow.png',
-  })
-}
+// Fix Leaflet default icon paths for Next.js - will be set in useEffect
 
 interface MapContainerProps {
   center: [number, number];
@@ -27,6 +19,16 @@ export function MapContainer({ center, category, onAreaClick }: MapContainerProp
   const heatLayerRef = useRef<any>(null);
 
   useEffect(() => {
+    if (typeof window === 'undefined') return
+    
+    // Fix Leaflet default icon paths
+    delete (L.Icon.Default.prototype as any)._getIconUrl
+    L.Icon.Default.mergeOptions({
+      iconUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon.png',
+      iconRetinaUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon-2x.png',
+      shadowUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-shadow.png',
+    })
+
     if (!mapRef.current) {
       // United States bounds only 
       const usSouthWest = L.latLng(24.396308, -124.848974); // lat, lng

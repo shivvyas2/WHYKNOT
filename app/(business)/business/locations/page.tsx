@@ -1,12 +1,15 @@
 'use client'
 
-export const dynamic = 'force-dynamic'
-
 import { useState, useEffect } from 'react'
-import { MapContainer } from '@/components/business/MapContainer'
+import dynamic from 'next/dynamic'
 import { LocationSearch } from '@/components/business/LocationSearch'
 import { CategoryDropdown } from '@/components/business/CategoryDropdown'
 import { AreaInsights } from '@/components/business/AreaInsights'
+
+// Dynamically import MapContainer to prevent SSR
+const MapContainer = dynamic(() => import('@/components/business/MapContainer').then(mod => ({ default: mod.MapContainer })), {
+  ssr: false,
+})
 
 export default function LocationsPage() {
   const [selectedLocation, setSelectedLocation] = useState<[number, number]>([
