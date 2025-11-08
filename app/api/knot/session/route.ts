@@ -76,25 +76,53 @@ export async function POST(request: Request) {
     })
 
     if (!knotResponse.ok) {
-      const errorData = await knotResponse.json()
-      console.error('Knot session creation error:', errorData)
+      let errorData
+      try {
+        errorData = await knotResponse.json()
+      } catch {
+        errorData = { message: await knotResponse.text() }
+      }
+      console.error('Knot session creation error:', {
+        status: knotResponse.status,
+        statusText: knotResponse.statusText,
+        error: errorData,
+      })
       return NextResponse.json(
-        { error: 'Failed to create Knot session', details: errorData },
+        { 
+          error: 'Failed to create Knot session', 
+          details: errorData,
+          status: knotResponse.status,
+        },
         { status: knotResponse.status }
       )
     }
 
     const sessionData = await knotResponse.json()
+    console.log('Knot session created successfully:', { sessionId: sessionData.session })
 
     // Knot API returns { session: "session-id" }
+    if (!sessionData.session) {
+      console.error('Invalid session response:', sessionData)
+      return NextResponse.json(
+        { error: 'Invalid session response from Knot API', details: sessionData },
+        { status: 500 }
+      )
+    }
+
     return NextResponse.json({
-      sessionId: sessionData.session || sessionData.session_id || sessionData.id,
+      sessionId: sessionData.session,
       clientId: knotClientId,
     })
   } catch (error) {
     console.error('Session creation error:', error)
+    const errorMessage = error instanceof Error ? error.message : 'Unknown error'
+    const errorStack = error instanceof Error ? error.stack : undefined
     return NextResponse.json(
-      { error: 'Internal server error' },
+      { 
+        error: 'Internal server error',
+        message: errorMessage,
+        ...(process.env.NODE_ENV === 'development' && { stack: errorStack }),
+      },
       { status: 500 }
     )
   }
