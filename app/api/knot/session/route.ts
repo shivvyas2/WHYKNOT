@@ -27,28 +27,42 @@ export async function POST(request: Request) {
     const body = await request.json()
     const { merchantIds } = body
 
-    const supabase = await createClient()
-
     // Get or create user in database
-    let { data: dbUser } = await supabase
-      .from('users')
-      .select('*')
-      .eq('id', user.id)
-      .single()
-
-    if (!dbUser) {
-      const { data: newUser, error: userError } = await supabase
+    let dbUser
+    if (MOCK_MODE) {
+      // In mock mode, create a mock db user
+      dbUser = {
+        id: user.id,
+        email: user.email || '',
+        role: 'user',
+      }
+    } else {
+      const supabase = await createClient()
+      let { data: existingUser } = await supabase
         .from('users')
-        .insert({
-          id: user.id,
-          email: user.email || '',
-          role: 'user',
-        })
-        .select()
+        .select('*')
+        .eq('id', user.id)
         .single()
 
-      if (userError) throw userError
-      dbUser = newUser
+      if (!existingUser) {
+        const { data: newUser, error: userError } = await supabase
+          .from('users')
+          .insert({
+            id: user.id,
+            email: user.email || '',
+            role: 'user',
+          })
+          .select()
+          .single()
+
+        if (userError) {
+          console.error('Error creating user:', userError)
+          throw userError
+        }
+        dbUser = newUser
+      } else {
+        dbUser = existingUser
+      }
     }
 
     // Create a Knot session via their API
