@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState } from 'react'
 import { useKnotSDK } from '@/lib/knot/sdk'
 import { env } from '@/config/env'
 
