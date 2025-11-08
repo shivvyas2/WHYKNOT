@@ -13,7 +13,7 @@ export function useKnot() {
 
       try {
         const client = createKnotClient(
-          env.NEXT_PUBLIC_KNOT_API_KEY || '',
+          env.NEXT_PUBLIC_KNOT_CLIENT_ID || '',
           env.KNOT_API_SECRET
         )
         const connection = await client.initializeConnection(userId, merchant)

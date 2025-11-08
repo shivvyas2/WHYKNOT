@@ -49,7 +49,7 @@ export async function GET(request: Request) {
 
     // Fetch transactions from Knot API for each active connection
     const knotClient = createKnotClient(
-      env.NEXT_PUBLIC_KNOT_API_KEY || '',
+      env.NEXT_PUBLIC_KNOT_CLIENT_ID || '',
       env.KNOT_API_SECRET
     )
 
