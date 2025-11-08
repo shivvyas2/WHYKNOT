@@ -24,25 +24,19 @@ export default async function UserLayout({
                   href="/user"
                   className="text-gray-700 hover:text-gray-900 px-3 py-2 rounded-md text-sm font-medium"
                 >
-                  Dashboard
+                  Coupons
                 </a>
                 <a
                   href="/user/opt-in"
                   className="text-gray-700 hover:text-gray-900 px-3 py-2 rounded-md text-sm font-medium"
                 >
-                  Opt In
+                  Share Data
                 </a>
                 <a
                   href="/user/rewards"
                   className="text-gray-700 hover:text-gray-900 px-3 py-2 rounded-md text-sm font-medium"
                 >
-                  Rewards
-                </a>
-                <a
-                  href="/user/deals"
-                  className="text-gray-700 hover:text-gray-900 px-3 py-2 rounded-md text-sm font-medium"
-                >
-                  Deals
+                  My Rewards
                 </a>
               </div>
             </div>
@@ -72,25 +66,19 @@ export default async function UserLayout({
                 href="/user"
                 className="text-gray-700 hover:text-gray-900 px-3 py-2 rounded-md text-sm font-medium"
               >
-                Dashboard
+                Coupons
               </a>
               <a
                 href="/user/opt-in"
                 className="text-gray-700 hover:text-gray-900 px-3 py-2 rounded-md text-sm font-medium"
               >
-                Opt In
+                Share Data
               </a>
               <a
                 href="/user/rewards"
                 className="text-gray-700 hover:text-gray-900 px-3 py-2 rounded-md text-sm font-medium"
               >
-                Rewards
-              </a>
-              <a
-                href="/user/deals"
-                className="text-gray-700 hover:text-gray-900 px-3 py-2 rounded-md text-sm font-medium"
-              >
-                Deals
+                My Rewards
               </a>
             </div>
           </div>

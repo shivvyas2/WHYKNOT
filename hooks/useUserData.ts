@@ -18,10 +18,22 @@ export function useUserData(userId: string | null) {
       try {
         const supabase = createClient()
 
+        // Get current month start and end dates
+        const now = new Date()
+        const monthStart = new Date(now.getFullYear(), now.getMonth(), 1)
+        const monthEnd = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59)
+
         const [optInsResult, rewardsResult, dealsResult] = await Promise.all([
           supabase.from('user_opt_ins').select('*').eq('user_id', userId),
           supabase.from('rewards').select('*').eq('user_id', userId),
-          supabase.from('deals').select('*').eq('user_id', userId).eq('is_active', true),
+          // Filter deals for current month and active status
+          supabase
+            .from('deals')
+            .select('*')
+            .eq('user_id', userId)
+            .eq('is_active', true)
+            .gte('created_at', monthStart.toISOString())
+            .lte('created_at', monthEnd.toISOString()),
         ])
 
         if (optInsResult.error) throw optInsResult.error
