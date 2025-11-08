@@ -7,25 +7,31 @@ import { env } from '@/config/env'
 
 export async function POST(request: Request) {
   try {
+    console.log('Session API called')
+    
     // In mock mode, create a mock user
     const MOCK_MODE = process.env.MOCK_MODE === 'true' || process.env.NODE_ENV === 'development'
+    console.log('MOCK_MODE:', MOCK_MODE)
     
     let user
     if (MOCK_MODE) {
       // Create a mock user for development
       user = {
-        id: 'mock-user-id',
+        id: 'mock-user-id-' + Date.now(),
         email: 'mock@example.com',
       }
+      console.log('Using mock user:', user.id)
     } else {
       user = await getAuthUser()
       if (!user) {
         return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
       }
+      console.log('Authenticated user:', user.id)
     }
 
     const body = await request.json()
     const { merchantIds } = body
+    console.log('Merchant IDs:', merchantIds)
 
     // Get or create user in database
     let dbUser
@@ -70,7 +76,17 @@ export async function POST(request: Request) {
     const knotClientId = env.NEXT_PUBLIC_KNOT_CLIENT_ID
     const knotApiSecret = env.KNOT_API_SECRET
 
+    console.log('Knot credentials check:', {
+      hasClientId: !!knotClientId,
+      hasSecret: !!knotApiSecret,
+      clientIdLength: knotClientId?.length || 0,
+    })
+
     if (!knotClientId || !knotApiSecret) {
+      console.error('Missing Knot credentials:', {
+        clientId: knotClientId ? 'present' : 'missing',
+        secret: knotApiSecret ? 'present' : 'missing',
+      })
       return NextResponse.json(
         { error: 'Knot API credentials not configured' },
         { status: 500 }
@@ -86,6 +102,13 @@ export async function POST(request: Request) {
     const baseUrl = environment === 'production' 
       ? 'https://knotapi.com' 
       : 'https://development.knotapi.com'
+
+    console.log('Calling Knot API:', {
+      baseUrl,
+      environment,
+      externalUserId: dbUser.id,
+      merchantIds,
+    })
 
     // Call Knot's Create Session API
     const knotResponse = await fetch(`${baseUrl}/session/create`, {
