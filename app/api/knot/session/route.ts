@@ -29,7 +29,17 @@ export async function POST(request: Request) {
       console.log('Authenticated user:', user.id)
     }
 
-    const body = await request.json()
+    let body
+    try {
+      body = await request.json()
+    } catch (error) {
+      console.error('Error parsing request body:', error)
+      return NextResponse.json(
+        { error: 'Invalid request body', message: error instanceof Error ? error.message : 'Unknown error' },
+        { status: 400 }
+      )
+    }
+    
     const { merchantIds } = body
     console.log('Merchant IDs:', merchantIds)
 
