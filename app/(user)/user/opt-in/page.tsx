@@ -20,9 +20,14 @@ export default function OptInPage() {
   const [selectedMerchant, setSelectedMerchant] = useState<string | null>(null)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
-  const { open } = useKnotSDK()
+  const { open, isReady } = useKnotSDK()
 
   const handleMerchantSelect = async (merchant: string) => {
+    if (!isReady) {
+      setError('SDK is still loading. Please wait a moment and try again.')
+      return
+    }
+
     setSelectedMerchant(merchant)
     setLoading(true)
     setError(null)

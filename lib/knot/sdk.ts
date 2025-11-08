@@ -1,7 +1,6 @@
 'use client'
 
-import { useEffect, useRef } from 'react'
-import KnotapiJS from 'knotapi-js'
+import { useEffect, useRef, useState } from 'react'
 
 export interface KnotSDKConfig {
   sessionId: string
@@ -29,12 +28,21 @@ export interface KnotSDKCallbacks {
 }
 
 export function useKnotSDK() {
-  const knotapiRef = useRef<KnotapiJS | null>(null)
+  const knotapiRef = useRef<any>(null)
+  const [isReady, setIsReady] = useState(false)
 
   useEffect(() => {
-    // Initialize SDK instance
+    // Dynamically import Knot SDK only on client-side
     if (typeof window !== 'undefined' && !knotapiRef.current) {
-      knotapiRef.current = new KnotapiJS()
+      import('knotapi-js')
+        .then((KnotapiJSModule) => {
+          const KnotapiJS = KnotapiJSModule.default || KnotapiJSModule
+          knotapiRef.current = new KnotapiJS()
+          setIsReady(true)
+        })
+        .catch((error) => {
+          console.error('Failed to load Knot SDK:', error)
+        })
     }
 
     return () => {
@@ -44,8 +52,8 @@ export function useKnotSDK() {
   }, [])
 
   const open = (config: KnotSDKConfig, callbacks: KnotSDKCallbacks) => {
-    if (!knotapiRef.current) {
-      console.error('Knot SDK not initialized')
+    if (!knotapiRef.current || !isReady) {
+      console.error('Knot SDK not initialized or not ready')
       return
     }
 
@@ -65,6 +73,6 @@ export function useKnotSDK() {
     })
   }
 
-  return { open }
+  return { open, isReady }
 }
 
