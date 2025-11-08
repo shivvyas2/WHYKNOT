@@ -247,6 +247,18 @@ export async function POST(request: Request) {
       )
     }
 
+    // Validate client ID before returning
+    if (!knotClientId || knotClientId.trim() === '') {
+      console.error('Client ID is missing or empty')
+      return NextResponse.json(
+        { 
+          error: 'Knot Client ID is not configured',
+          message: 'NEXT_PUBLIC_KNOT_CLIENT_ID environment variable is missing or empty',
+        },
+        { status: 500 }
+      )
+    }
+
     return NextResponse.json({
       sessionId: sessionData.session,
       clientId: knotClientId,

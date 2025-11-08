@@ -54,11 +54,15 @@ export default function OptInPage() {
         throw new Error(errorData.error || 'Failed to create session')
       }
 
-      const { sessionId, clientId } = await sessionResponse.json()
+      const sessionData = await sessionResponse.json()
 
-      if (!sessionId || !clientId) {
-        throw new Error('Invalid session response')
+      if (!sessionData.sessionId || !sessionData.clientId) {
+        const errorMsg = sessionData.error || sessionData.message || 'Invalid session response'
+        console.error('Session creation failed:', sessionData)
+        throw new Error(errorMsg)
       }
+
+      const { sessionId, clientId } = sessionData
 
       // Open Knot SDK
       open(
