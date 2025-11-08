@@ -10,6 +10,8 @@ const envSchema = z.object({
   NEXT_PUBLIC_KNOT_API_KEY: z.string().optional(),
   KNOT_API_SECRET: z.string().optional(),
   KNOT_WEBHOOK_SECRET: z.string().optional(),
+  NEXT_PUBLIC_KNOT_CLIENT_ID: z.string().optional(),
+  KNOT_ENVIRONMENT: z.enum(['development', 'production']).default('development'),
 
   // App
   NEXT_PUBLIC_APP_URL: z.string().url().default('http://localhost:3000'),
