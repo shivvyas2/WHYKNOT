@@ -19,7 +19,7 @@ export function MapContainer({ center, category, onAreaClick }: MapContainerProp
   const heatLayerRef = useRef<any>(null);
   const restaurantMarkersRef = useRef<L.Marker<any>[]>([]);
   const fetchTimerRef = useRef<number | null>(null);
-  const minZoomForRestaurants = 12;
+  const minZoomForRestaurants = 10;
 
   useEffect(() => {
     if (typeof window === 'undefined') return
@@ -117,7 +117,7 @@ export function MapContainer({ center, category, onAreaClick }: MapContainerProp
     }
   }, [center, category]);
 
-  // Fetch restaurants within current map bounds using Overpass API
+  // Build query to fetch restaurants within current map bounds using Overpass API
   function buildOverpassBBoxQuery(south: number, west: number, north: number, east: number) {
     // Overpass uses (south,west,north,east)
     return `
