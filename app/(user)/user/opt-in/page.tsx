@@ -64,12 +64,28 @@ export default function OptInPage() {
 
       const { sessionId, clientId } = sessionData
 
+      // Determine environment - must match the client ID
+      const environment = (env.KNOT_ENVIRONMENT as 'development' | 'production') || 'development'
+      
+      // Log what we're passing to SDK for debugging
+      console.log('Opening Knot SDK with:', {
+        sessionId: sessionId?.substring(0, 8) + '...',
+        clientId: clientId?.substring(0, 8) + '...',
+        environment,
+        merchantId,
+      })
+
+      // Validate client ID is present
+      if (!clientId || clientId.trim() === '') {
+        throw new Error('Client ID is missing from session response')
+      }
+
       // Open Knot SDK
       open(
         {
           sessionId,
           clientId,
-          environment: (env.KNOT_ENVIRONMENT as 'development' | 'production') || 'development',
+          environment,
           product: 'transaction_link',
           merchantIds: [merchantId], // Pass the specific merchant ID to SDK
           entryPoint: 'opt-in',

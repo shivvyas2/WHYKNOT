@@ -259,9 +259,18 @@ export async function POST(request: Request) {
       )
     }
 
+    // Log the response for debugging
+    console.log('Returning session response:', {
+      sessionId: sessionData.session?.substring(0, 8) + '...',
+      clientId: knotClientId.substring(0, 8) + '...',
+      environment,
+      clientIdLength: knotClientId.length,
+    })
+
     return NextResponse.json({
       sessionId: sessionData.session,
       clientId: knotClientId,
+      environment, // Also return environment so frontend can verify
     })
   } catch (error) {
     console.error('Session creation error:', error)

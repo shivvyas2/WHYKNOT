@@ -61,11 +61,34 @@ This error occurs when:
 - `NEXT_PUBLIC_KNOT_CLIENT_ID` is not set in Vercel
 - The client ID is incorrect
 - The client ID doesn't match the environment (development vs production)
+- The environment variable is set but not available at build/runtime
 
 **Solution**: 
-1. Verify `NEXT_PUBLIC_KNOT_CLIENT_ID` is set in Vercel
-2. Ensure it matches your Knot account credentials
-3. Ensure `KNOT_ENVIRONMENT` matches your client ID's environment
+1. **Verify the variable is set correctly in Vercel:**
+   - Go to Settings → Environment Variables
+   - Check that `NEXT_PUBLIC_KNOT_CLIENT_ID` is set to: `dda0778d-9486-47f8-bd80-6f2512f9bcdb`
+   - Make sure it's enabled for **Production** environment
+   - **Important**: `NEXT_PUBLIC_` variables must be set for the Production environment specifically
+
+2. **Ensure `KNOT_ENVIRONMENT` matches your client ID:**
+   - If using development client ID (`dda0778d-9486-47f8-bd80-6f2512f9bcdb`), set `KNOT_ENVIRONMENT` to `development`
+   - If using production client ID, set `KNOT_ENVIRONMENT` to `production`
+
+3. **Redeploy after setting variables:**
+   - After adding/changing environment variables, you MUST redeploy
+   - Go to Deployments → Click the three dots on latest deployment → Redeploy
+   - Or push a new commit to trigger a redeploy
+
+4. **Check Vercel logs:**
+   - Go to your deployment → Logs
+   - Look for "Opening Knot SDK with:" log message
+   - Verify the clientId and environment values match
+
+5. **Common issues:**
+   - Variable set only for Preview/Development but not Production
+   - Variable has extra spaces or characters
+   - Variable not set for the correct environment (Production vs Preview)
+   - Build cache - try clearing build cache and redeploying
 
 ### "Failed to get user" Error
 
