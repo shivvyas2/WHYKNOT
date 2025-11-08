@@ -5,29 +5,29 @@ export class KnotClient {
   private apiKey: string
   private apiSecret?: string
 
-  constructor(apiKey: string, apiSecret?: string) {
+  constructor(apiKey: string, _apiSecret?: string) {
     this.apiKey = apiKey
-    this.apiSecret = apiSecret
+    this.apiSecret = _apiSecret
   }
 
-  async initializeConnection(userId: string, merchant: string) {
+  async initializeConnection(_userId: string, _merchant: string): Promise<{ id: string }> {
     // Placeholder for Knot SDK initialization
     // This will connect a user's merchant account (DoorDash, Uber Eats)
     throw new Error('Knot SDK integration pending - awaiting SDK documentation')
   }
 
-  async getTransactions(connectionId: string, startDate?: Date, endDate?: Date) {
+  async getTransactions(_connectionId: string, _startDate?: Date, _endDate?: Date): Promise<unknown[]> {
     // Placeholder for fetching transaction data
     throw new Error('Knot SDK integration pending - awaiting SDK documentation')
   }
 
-  async disconnectConnection(connectionId: string) {
+  async disconnectConnection(_connectionId: string) {
     // Placeholder for disconnecting a merchant connection
     throw new Error('Knot SDK integration pending - awaiting SDK documentation')
   }
 }
 
-export function createKnotClient(apiKey: string, apiSecret?: string) {
-  return new KnotClient(apiKey, apiSecret)
+export function createKnotClient(apiKey: string, _apiSecret?: string) {
+  return new KnotClient(apiKey, _apiSecret)
 }
 

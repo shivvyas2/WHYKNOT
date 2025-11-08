@@ -2,9 +2,9 @@ import { useState, useEffect } from 'react'
 import { createClient } from '@/lib/supabase/client'
 
 export function useUserData(userId: string | null) {
-  const [optIns, setOptIns] = useState([])
-  const [rewards, setRewards] = useState([])
-  const [deals, setDeals] = useState([])
+  const [optIns, setOptIns] = useState<unknown[]>([])
+  const [rewards, setRewards] = useState<unknown[]>([])
+  const [deals, setDeals] = useState<unknown[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<Error | null>(null)
 

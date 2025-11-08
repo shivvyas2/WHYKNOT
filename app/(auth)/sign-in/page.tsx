@@ -32,7 +32,7 @@ export default function SignInPage() {
 
       router.push('/user')
       router.refresh()
-    } catch (err) {
+    } catch {
       setError('An unexpected error occurred')
       setLoading(false)
     }
@@ -98,7 +98,7 @@ export default function SignInPage() {
           </div>
 
           <div className="text-center text-sm">
-            <span className="text-gray-600">Don't have an account? </span>
+            <span className="text-gray-600">Don&apos;t have an account? </span>
             <Link
               href="/sign-up"
               className="font-medium text-blue-600 hover:text-blue-500"

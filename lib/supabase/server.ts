@@ -16,19 +16,19 @@ export const createClient = async () => {
       get(name: string) {
         return cookieStore.get(name)?.value
       },
-      set(name: string, value: string, options: any) {
+      set(name: string, value: string, options?: { path?: string; maxAge?: number; domain?: string; sameSite?: 'lax' | 'strict' | 'none'; secure?: boolean }) {
         try {
           cookieStore.set(name, value, options)
-        } catch (error) {
+        } catch {
           // The `set` method was called from a Server Component.
           // This can be ignored if you have middleware refreshing
           // user sessions.
         }
       },
-      remove(name: string, options: any) {
+      remove(name: string, options?: { path?: string; maxAge?: number; domain?: string; sameSite?: 'lax' | 'strict' | 'none'; secure?: boolean }) {
         try {
           cookieStore.set(name, '', { ...options, maxAge: 0 })
-        } catch (error) {
+        } catch {
           // The `delete` method was called from a Server Component.
           // This can be ignored if you have middleware refreshing
           // user sessions.

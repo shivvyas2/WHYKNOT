@@ -38,7 +38,7 @@ export default function RewardsPage() {
       ) : rewards.length === 0 ? (
         <div className="bg-white p-6 rounded-lg shadow">
           <p className="text-gray-600 mb-4">
-            You don't have any rewards yet. Opt in to share your data and get a
+            You don&apos;t have any rewards yet. Opt in to share your data and get a
             $20 promo code!
           </p>
           <a
@@ -50,7 +50,7 @@ export default function RewardsPage() {
         </div>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          {rewards.map((reward: any) => (
+          {(rewards as Array<{ id: string; promo_code: string; amount: number; currency: string; is_used: boolean }>).map((reward) => (
             <div
               key={reward.id}
               className="bg-white p-6 rounded-lg shadow border-2 border-green-500"

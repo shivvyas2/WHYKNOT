@@ -47,12 +47,12 @@ export default function OptInPage() {
       <h1 className="text-3xl font-bold mb-6">Opt In to Share Data</h1>
       <div className="bg-white p-6 rounded-lg shadow max-w-2xl">
         <p className="text-gray-600 mb-6">
-          Select which merchants you want to share transaction data from. You'll
+          Select which merchants you want to share transaction data from. You&apos;ll
           receive a $20 promo code and exclusive deals based on your preferences.
         </p>
 
         <div className="space-y-4 mb-6">
-          {Object.entries(MERCHANTS).map(([key, value]) => (
+          {Object.entries(MERCHANTS).map(([_key, value]) => (
             <label
               key={value}
               className="flex items-center p-4 border rounded-lg cursor-pointer hover:bg-gray-50"

@@ -2,7 +2,7 @@ import { getAuthUser } from '@/lib/auth/utils'
 import { NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 
-export async function GET(request: Request) {
+export async function GET(_request: Request) {
   try {
     const user = await getAuthUser()
     if (!user) {

@@ -50,7 +50,7 @@ export default function DealsPage() {
         </div>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {deals.map((deal: any) => (
+          {(deals as Array<{ id: string; title: string; description: string; merchant: string; discount_percentage: number | null; discount_amount: number | null }>).map((deal) => (
             <div
               key={deal.id}
               className="bg-white p-6 rounded-lg shadow border border-gray-200"

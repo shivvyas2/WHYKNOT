@@ -6,7 +6,7 @@ import { useRouter } from 'next/navigation'
 import { useEffect, useState } from 'react'
 
 export function Header() {
-  const [user, setUser] = useState<any>(null)
+  const [user, setUser] = useState<{ id: string; email?: string } | null>(null)
   const router = useRouter()
   const supabase = createClient()
 

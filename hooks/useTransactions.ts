@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react'
 import { createClient } from '@/lib/supabase/client'
 
 export function useTransactions(userId: string | null) {
-  const [transactions, setTransactions] = useState([])
+  const [transactions, setTransactions] = useState<unknown[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<Error | null>(null)
 

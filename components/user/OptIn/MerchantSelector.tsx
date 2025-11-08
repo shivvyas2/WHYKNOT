@@ -13,7 +13,7 @@ export function MerchantSelector({
 }: MerchantSelectorProps) {
   return (
     <div className="space-y-4">
-      {Object.entries(MERCHANTS).map(([key, value]) => (
+      {Object.entries(MERCHANTS).map(([_key, value]) => (
         <label
           key={value}
           className="flex items-center p-4 border rounded-lg cursor-pointer hover:bg-gray-50"

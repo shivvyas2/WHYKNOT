@@ -2,10 +2,23 @@
 
 import { useState } from 'react'
 
+interface LocationInsight {
+  area: string
+  zipCode: string
+  orderFrequency: number
+  popularItems: string[]
+  averageOrderValue: number
+  peakHours: number[]
+  merchantData: {
+    doordash: number
+    ubereats: number
+  }
+}
+
 export function LocationScout() {
   const [zipCode, setZipCode] = useState('')
   const [loading, setLoading] = useState(false)
-  const [insights, setInsights] = useState(null)
+  const [insights, setInsights] = useState<LocationInsight | null>(null)
 
   const handleSearch = async () => {
     if (!zipCode) return

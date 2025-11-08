@@ -1,4 +1,4 @@
-import { createBrowserClient } from '@supabase/supabase-js'
+import { createClient as createSupabaseClient } from '@supabase/supabase-js'
 import { env } from '@/config/env'
 
 export const createClient = () => {
@@ -9,6 +9,6 @@ export const createClient = () => {
     throw new Error('Missing Supabase environment variables')
   }
   
-  return createBrowserClient(supabaseUrl, supabaseAnonKey)
+  return createSupabaseClient(supabaseUrl, supabaseAnonKey)
 }
 

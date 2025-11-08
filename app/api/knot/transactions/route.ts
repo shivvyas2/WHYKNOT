@@ -51,7 +51,7 @@ export async function GET(request: Request) {
       env.KNOT_API_SECRET
     )
 
-    const allTransactions = []
+    const allTransactions: unknown[] = []
 
     for (const optIn of optIns) {
       if (optIn.knot_connection_id) {
@@ -61,7 +61,9 @@ export async function GET(request: Request) {
             startDate ? new Date(startDate) : undefined,
             endDate ? new Date(endDate) : undefined
           )
-          allTransactions.push(...(transactions || []))
+          if (Array.isArray(transactions)) {
+            allTransactions.push(...transactions)
+          }
         } catch (error) {
           console.error(
             `Error fetching transactions for ${optIn.merchant}:`,

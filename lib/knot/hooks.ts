@@ -4,9 +4,9 @@
 import { useState, useEffect } from 'react'
 
 export function useKnotConnection(connectionId: string | null) {
-  const [connection, setConnection] = useState(null)
+  const [connection] = useState(null)
   const [loading, setLoading] = useState(true)
-  const [error, setError] = useState<Error | null>(null)
+  const [error] = useState<Error | null>(null)
 
   useEffect(() => {
     if (!connectionId) {
@@ -22,9 +22,9 @@ export function useKnotConnection(connectionId: string | null) {
 }
 
 export function useKnotTransactions(connectionId: string | null) {
-  const [transactions, setTransactions] = useState([])
+  const [transactions] = useState([])
   const [loading, setLoading] = useState(true)
-  const [error, setError] = useState<Error | null>(null)
+  const [error] = useState<Error | null>(null)
 
   useEffect(() => {
     if (!connectionId) {
