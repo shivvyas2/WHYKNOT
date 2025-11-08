@@ -19,13 +19,19 @@ const envSchema = z.object({
 export type Env = z.infer<typeof envSchema>
 
 function getEnv(): Env {
+  // Preprocess environment variables to trim whitespace/newlines
+  const processedEnv = { ...process.env }
+  if (processedEnv.KNOT_ENVIRONMENT) {
+    processedEnv.KNOT_ENVIRONMENT = processedEnv.KNOT_ENVIRONMENT.trim()
+  }
+  
   // In CI or development, allow missing optional env vars
   if (process.env.CI || process.env.NODE_ENV !== 'production') {
-    return envSchema.partial().parse(process.env) as Env
+    return envSchema.partial().parse(processedEnv) as Env
   }
   
   try {
-    return envSchema.parse(process.env)
+    return envSchema.parse(processedEnv)
   } catch (error) {
     if (error instanceof z.ZodError) {
       const missingVars = error.errors.map((e) => e.path.join('.')).join(', ')
