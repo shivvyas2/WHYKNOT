@@ -75,7 +75,6 @@ export default function OptInPage() {
         {
           onSuccess: async (product, details) => {
             console.log('Knot SDK Success:', product, details)
-            const merchantName = details?.merchantName || 'Unknown'
             // Handle successful connection
             // Sync transactions for the selected merchant after successful connection
             try {
@@ -145,7 +144,6 @@ export default function OptInPage() {
                       {
                         onSuccess: async (product, details) => {
                           console.log('Knot SDK Success (after refresh):', product, details)
-                          const merchantName = details?.merchantName || 'Unknown'
                           // Sync transactions after successful connection
                           try {
                             const syncResponse = await fetch('/api/knot/transactions/sync', {

@@ -54,7 +54,7 @@ export async function POST(request: Request) {
       }
     } else {
       const supabase = await createClient()
-      let { data: existingUser } = await supabase
+      const { data: existingUser } = await supabase
         .from('users')
         .select('*')
         .eq('id', user.id)
