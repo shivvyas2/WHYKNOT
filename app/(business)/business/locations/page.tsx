@@ -1,10 +1,13 @@
 'use client'
 
 import { useState, useEffect } from 'react'
+import { useRouter } from 'next/navigation'
 import dynamic from 'next/dynamic'
 import { LocationSearch } from '@/components/business/LocationSearch'
 import { CategoryDropdown } from '@/components/business/CategoryDropdown'
 import { AreaInsights } from '@/components/business/AreaInsights'
+import { Button } from '@/components/ui/button'
+import { ArrowLeft } from 'lucide-react'
 
 // Dynamically import MapContainer to prevent SSR
 const MapContainer = dynamic(() => import('@/components/business/MapContainer').then(mod => ({ default: mod.MapContainer })), {
@@ -12,6 +15,7 @@ const MapContainer = dynamic(() => import('@/components/business/MapContainer').
 })
 
 export default function LocationsPage() {
+  const router = useRouter()
   const [selectedLocation, setSelectedLocation] = useState<[number, number]>([
     40.7128, -74.0060,
   ])
@@ -48,6 +52,13 @@ export default function LocationsPage() {
       />
 
       {/* Location Search - Top Left */}
+      {/* Page-level Back button */}
+      <div className="absolute top-6 left-2 z-[1000]">
+        <Button variant="ghost" size="icon" onClick={() => router.back()} aria-label="Go back">
+          <ArrowLeft className="h-6 w-6" />
+        </Button>
+      </div>
+
       <div className="absolute top-6 left-12 z-[1000]">
         <LocationSearch onLocationSelect={setSelectedLocation} />
       </div>
