@@ -14,7 +14,7 @@ interface AreaInsightsProps {
 }
 
 export function AreaInsights({ location, category, onClose }: AreaInsightsProps) {
-  const insights = getAreaInsights(category);
+  const insights = getAreaInsights(category, location);
 
   return (
     <div className="absolute top-0 right-0 h-full w-[500px] bg-white shadow-2xl z-[1000] overflow-y-auto">
