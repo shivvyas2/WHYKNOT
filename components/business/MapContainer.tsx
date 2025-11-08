@@ -43,8 +43,9 @@ export function MapContainer({ center, category, onAreaClick }: MapContainerProp
         maxBounds: usBounds,
         // Prevent the user from panning far outside the bounds
         maxBoundsViscosity: 0.9,
+        zoomControl: false,
       });
-
+    L.control.zoom({ position: 'bottomleft' }).addTo(mapRef.current);
       L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
         attribution: '© OpenStreetMap contributors',
         maxZoom: 19,
