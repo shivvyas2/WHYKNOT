@@ -7,10 +7,9 @@ const envSchema = z.object({
   SUPABASE_SERVICE_ROLE_KEY: z.string().min(1).optional(),
 
   // Knot API
-  NEXT_PUBLIC_KNOT_API_KEY: z.string().optional(),
-  KNOT_API_SECRET: z.string().optional(),
+  NEXT_PUBLIC_KNOT_CLIENT_ID: z.string().optional(), // Knot Client ID (used as API Key)
+  KNOT_API_SECRET: z.string().optional(), // Knot API Secret
   KNOT_WEBHOOK_SECRET: z.string().optional(),
-  NEXT_PUBLIC_KNOT_CLIENT_ID: z.string().optional(),
   KNOT_ENVIRONMENT: z.enum(['development', 'production']).default('development'),
 
   // App

@@ -41,10 +41,10 @@ export async function POST(request: Request) {
 
     // Create a Knot session via their API
     // This requires calling Knot's Create Session endpoint
-    const knotApiKey = env.NEXT_PUBLIC_KNOT_API_KEY
+    const knotClientId = env.NEXT_PUBLIC_KNOT_CLIENT_ID
     const knotApiSecret = env.KNOT_API_SECRET
 
-    if (!knotApiKey || !knotApiSecret) {
+    if (!knotClientId || !knotApiSecret) {
       return NextResponse.json(
         { error: 'Knot API credentials not configured' },
         { status: 500 }
@@ -56,7 +56,7 @@ export async function POST(request: Request) {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'X-API-Key': knotApiKey,
+        'X-API-Key': knotClientId,
         'X-API-Secret': knotApiSecret,
       },
       body: JSON.stringify({
@@ -79,7 +79,7 @@ export async function POST(request: Request) {
 
     return NextResponse.json({
       sessionId: sessionData.session_id || sessionData.id,
-      clientId: env.NEXT_PUBLIC_KNOT_CLIENT_ID || '',
+      clientId: knotClientId,
     })
   } catch (error) {
     console.error('Session creation error:', error)
