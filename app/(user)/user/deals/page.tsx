@@ -1,5 +1,7 @@
 'use client'
 
+export const dynamic = 'force-dynamic'
+
 import { useEffect, useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { useUserData } from '@/hooks/useUserData'
@@ -7,12 +9,12 @@ import { useUserData } from '@/hooks/useUserData'
 export default function DealsPage() {
   const [dbUserId, setDbUserId] = useState<string | null>(null)
   const { deals, loading } = useUserData(dbUserId)
-  const supabase = createClient()
 
   useEffect(() => {
     // Fetch database user ID from API
     const fetchDbUserId = async () => {
       try {
+        const supabase = createClient()
         const {
           data: { user },
         } = await supabase.auth.getUser()
@@ -28,7 +30,7 @@ export default function DealsPage() {
       }
     }
     fetchDbUserId()
-  }, [supabase])
+  }, [])
 
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">

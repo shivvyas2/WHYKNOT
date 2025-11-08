@@ -5,9 +5,10 @@ export const createClient = () => {
   const supabaseUrl = env.NEXT_PUBLIC_SUPABASE_URL || ''
   const supabaseAnonKey = env.NEXT_PUBLIC_SUPABASE_ANON_KEY || ''
   
-  // In CI or development, use placeholder values if missing
+  // In CI, development, or during build, use placeholder values if missing
   if (!supabaseUrl || !supabaseAnonKey) {
-    if (process.env.CI || process.env.NODE_ENV !== 'production') {
+    // Check if we're in a build environment (Vercel sets NEXT_PHASE during build)
+    if (process.env.CI || process.env.NODE_ENV !== 'production' || process.env.NEXT_PHASE === 'phase-production-build') {
       return createSupabaseClient('https://placeholder.supabase.co', 'placeholder-key')
     }
     throw new Error('Missing Supabase environment variables')
