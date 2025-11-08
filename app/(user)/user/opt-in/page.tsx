@@ -65,7 +65,14 @@ export default function OptInPage() {
       const { sessionId, clientId: clientIdFromApi, environment: envFromApi } = sessionData
 
       // Use client ID from API, or fallback to env variable
-      const clientId = clientIdFromApi || env.NEXT_PUBLIC_KNOT_CLIENT_ID
+      // IMPORTANT: NEXT_PUBLIC_ variables are embedded at build time
+      const envClientId = typeof window !== 'undefined' 
+        ? (window as any).__NEXT_DATA__?.env?.NEXT_PUBLIC_KNOT_CLIENT_ID 
+          || process.env.NEXT_PUBLIC_KNOT_CLIENT_ID
+          || env.NEXT_PUBLIC_KNOT_CLIENT_ID
+        : env.NEXT_PUBLIC_KNOT_CLIENT_ID
+      
+      const clientId = clientIdFromApi || envClientId
       
       // Determine environment - use from API response or fallback to env
       const environment = (envFromApi || env.KNOT_ENVIRONMENT || 'development') as 'development' | 'production'
@@ -74,10 +81,13 @@ export default function OptInPage() {
       console.log('Opening Knot SDK with:', {
         sessionId: sessionId ? `${sessionId.substring(0, 8)}...` : 'missing',
         clientId: clientId ? `${clientId.substring(0, 8)}...` : 'missing',
-        clientIdSource: clientIdFromApi ? 'from API' : 'from env',
+        clientIdLength: clientId?.length || 0,
+        clientIdFromApi: clientIdFromApi ? `${clientIdFromApi.substring(0, 8)}...` : 'missing',
+        envClientId: envClientId ? `${envClientId.substring(0, 8)}...` : 'missing',
+        clientIdSource: clientIdFromApi ? 'from API' : (envClientId ? 'from env' : 'NOT FOUND'),
         environment,
         merchantId,
-        envClientId: env.NEXT_PUBLIC_KNOT_CLIENT_ID ? 'set' : 'not set',
+        processEnvCheck: typeof process !== 'undefined' && process.env.NEXT_PUBLIC_KNOT_CLIENT_ID ? 'set in process.env' : 'not in process.env',
       })
 
       // Validate client ID is present
