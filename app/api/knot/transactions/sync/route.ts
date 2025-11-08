@@ -13,34 +13,29 @@ export async function POST(request: Request) {
     }
 
     const body = await request.json()
-    const { merchantIds } = body
+    const { merchant_id, cursor, limit = 5 } = body
+
+    if (!merchant_id) {
+      return NextResponse.json(
+        { error: 'merchant_id is required' },
+        { status: 400 }
+      )
+    }
 
     const supabase = await createClient()
 
-    // Get or create user in database
-    let { data: dbUser } = await supabase
+    // Get user from database
+    const { data: dbUser } = await supabase
       .from('users')
       .select('*')
       .eq('id', user.id)
       .single()
 
     if (!dbUser) {
-      const { data: newUser, error: userError } = await supabase
-        .from('users')
-        .insert({
-          id: user.id,
-          email: user.email || '',
-          role: 'user',
-        })
-        .select()
-        .single()
-
-      if (userError) throw userError
-      dbUser = newUser
+      return NextResponse.json({ error: 'User not found' }, { status: 404 })
     }
 
-    // Create a Knot session via their API
-    // This requires calling Knot's Create Session endpoint
+    // Create Basic Auth header
     const knotClientId = env.NEXT_PUBLIC_KNOT_CLIENT_ID
     const knotApiSecret = env.KNOT_API_SECRET
 
@@ -51,7 +46,6 @@ export async function POST(request: Request) {
       )
     }
 
-    // Create Basic Auth header
     const authString = Buffer.from(`${knotClientId}:${knotApiSecret}`).toString('base64')
     const authHeader = `Basic ${authString}`
 
@@ -61,38 +55,46 @@ export async function POST(request: Request) {
       ? 'https://knotapi.com' 
       : 'https://development.knotapi.com'
 
-    // Call Knot's Create Session API
-    const knotResponse = await fetch(`${baseUrl}/session/create`, {
+    // Call Knot's Transaction Sync API
+    const syncResponse = await fetch(`${baseUrl}/transactions/sync`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
         'Authorization': authHeader,
       },
       body: JSON.stringify({
-        type: 'transaction_link',
+        merchant_id,
         external_user_id: dbUser.id,
-        merchant_ids: merchantIds || [],
+        cursor: cursor || undefined,
+        limit: Math.min(Math.max(limit, 1), 100), // Clamp between 1 and 100
       }),
     })
 
-    if (!knotResponse.ok) {
-      const errorData = await knotResponse.json()
-      console.error('Knot session creation error:', errorData)
+    if (!syncResponse.ok) {
+      const errorData = await syncResponse.json()
+      console.error('Knot transaction sync error:', errorData)
       return NextResponse.json(
-        { error: 'Failed to create Knot session', details: errorData },
-        { status: knotResponse.status }
+        { error: 'Failed to sync transactions', details: errorData },
+        { status: syncResponse.status }
       )
     }
 
-    const sessionData = await knotResponse.json()
+    const syncData = await syncResponse.json()
 
-    // Knot API returns { session: "session-id" }
-    return NextResponse.json({
-      sessionId: sessionData.session || sessionData.session_id || sessionData.id,
-      clientId: knotClientId,
-    })
+    // Store transactions in cache if needed
+    if (syncData.transactions && Array.isArray(syncData.transactions)) {
+      for (const transaction of syncData.transactions) {
+        await supabase.from('transaction_cache').upsert({
+          user_id: dbUser.id,
+          merchant: syncData.merchant?.name || merchant_id.toString(),
+          transaction_data: transaction,
+        })
+      }
+    }
+
+    return NextResponse.json(syncData)
   } catch (error) {
-    console.error('Session creation error:', error)
+    console.error('Transaction sync error:', error)
     return NextResponse.json(
       { error: 'Internal server error' },
       { status: 500 }
