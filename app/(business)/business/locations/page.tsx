@@ -39,7 +39,7 @@ export default function LocationsPage() {
   }, [])
 
   return (
-    <div className="fixed inset-0 h-screen w-screen -mt-16">
+    <div className="fixed inset-0 h-screen w-screen">
       {/* Map */}
       <MapContainer
         center={selectedLocation}
