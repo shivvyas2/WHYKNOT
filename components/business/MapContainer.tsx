@@ -17,6 +17,9 @@ interface MapContainerProps {
 export function MapContainer({ center, category, onAreaClick }: MapContainerProps) {
   const mapRef = useRef<L.Map | null>(null);
   const heatLayerRef = useRef<any>(null);
+  const restaurantMarkersRef = useRef<L.Marker<any>[]>([]);
+  const fetchTimerRef = useRef<number | null>(null);
+  const minZoomForRestaurants = 12;
 
   useEffect(() => {
     if (typeof window === 'undefined') return
@@ -39,7 +42,7 @@ export function MapContainer({ center, category, onAreaClick }: MapContainerProp
         center,
         zoom: 13,
         minZoom: 3,
-        maxZoom: 15,
+        maxZoom: 30,
         maxBounds: usBounds,
         // Prevent the user from panning far outside the bounds
         maxBoundsViscosity: 0.9,
@@ -48,7 +51,7 @@ export function MapContainer({ center, category, onAreaClick }: MapContainerProp
     L.control.zoom({ position: 'bottomleft' }).addTo(mapRef.current);
       L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
         attribution: '© OpenStreetMap contributors',
-        maxZoom: 19,
+        maxZoom: 30,
         detectRetina: true,
       }).addTo(mapRef.current);
 
@@ -56,6 +59,22 @@ export function MapContainer({ center, category, onAreaClick }: MapContainerProp
       mapRef.current.on('click', (e) => {
         onAreaClick({ lat: e.latlng.lat, lng: e.latlng.lng });
       });
+
+      // Fetch restaurants for visible bounds after movement (debounced)
+      const scheduleFetch = () => {
+        if (!mapRef.current) return;
+        if (fetchTimerRef.current) {
+          window.clearTimeout(fetchTimerRef.current);
+        }
+        // debounce 600ms
+        fetchTimerRef.current = window.setTimeout(() => {
+          fetchRestaurantsForView();
+        }, 600) as unknown as number;
+      };
+
+      mapRef.current.on('moveend', scheduleFetch);
+      // initial fetch
+      scheduleFetch();
     }
 
     return () => {
@@ -97,6 +116,77 @@ export function MapContainer({ center, category, onAreaClick }: MapContainerProp
       }).addTo(mapRef.current);
     }
   }, [center, category]);
+
+  // Fetch restaurants within current map bounds using Overpass API
+  function buildOverpassBBoxQuery(south: number, west: number, north: number, east: number) {
+    // Overpass uses (south,west,north,east)
+    return `
+      [out:json][timeout:25];
+      node["amenity"="restaurant"](${south},${west},${north},${east});
+      out body;
+    `;
+  }
+
+  async function fetchRestaurantsForView() {
+    if (!mapRef.current) return;
+    const z = mapRef.current.getZoom();
+    if (z < minZoomForRestaurants) {
+      // remove existing markers if zoomed out
+      restaurantMarkersRef.current.forEach((m) => mapRef.current?.removeLayer(m));
+      restaurantMarkersRef.current = [];
+      return;
+    }
+
+    const bounds = mapRef.current.getBounds();
+    const south = bounds.getSouth();
+    const west = bounds.getWest();
+    const north = bounds.getNorth();
+    const east = bounds.getEast();
+
+    const query = buildOverpassBBoxQuery(south, west, north, east);
+    const url = `https://overpass-api.de/api/interpreter?data=${encodeURIComponent(query)}`;
+
+    try {
+      const res = await fetch(url);
+      if (!res.ok) throw new Error(`Overpass error ${res.status}`);
+      const data = await res.json();
+
+      // clear existing markers
+      restaurantMarkersRef.current.forEach((m) => mapRef.current?.removeLayer(m));
+      restaurantMarkersRef.current = [];
+
+      if (!data.elements || !Array.isArray(data.elements)) return;
+
+      // limit number of markers to avoid overload
+      const nodes = data.elements.filter((el: any) => el.type === 'node');
+      const max = 300;
+      for (let i = 0; i < Math.min(nodes.length, max); i++) {
+        const node = nodes[i];
+        if (typeof node.lat !== 'number' || typeof node.lon !== 'number') continue;
+        const lat = node.lat;
+        const lng = node.lon;
+        const name = node.tags?.name ?? 'Restaurant';
+
+        const marker = L.marker([lat, lng]);
+        marker.bindPopup(`<strong>${escapeHtml(String(name))}</strong>`);
+        marker.on('click', () => onAreaClick({ lat, lng }));
+        marker.addTo(mapRef.current!);
+        restaurantMarkersRef.current.push(marker);
+      }
+    } catch (err) {
+      console.warn('Failed to fetch restaurants', err);
+    }
+  }
+
+  function escapeHtml(str: string) {
+    return str.replace(/[&<>"']/g, (s) => ({
+      '&': '&amp;',
+      '<': '&lt;',
+      '>': '&gt;',
+      '"': '&quot;',
+      "'": '&#39;'
+    } as any)[s]);
+  }
 
   return <div id="map" className="w-full h-full" />;
 }
