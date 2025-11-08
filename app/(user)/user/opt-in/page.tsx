@@ -69,8 +69,8 @@ export default function OptInPage() {
       
       // Log what we're passing to SDK for debugging
       console.log('Opening Knot SDK with:', {
-        sessionId: sessionId?.substring(0, 8) + '...',
-        clientId: clientId?.substring(0, 8) + '...',
+        sessionId: sessionId ? `${sessionId.substring(0, 8)}...` : 'missing',
+        clientId: clientId ? `${clientId.substring(0, 8)}...` : 'missing',
         environment,
         merchantId,
       })

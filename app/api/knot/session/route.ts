@@ -261,8 +261,8 @@ export async function POST(request: Request) {
 
     // Log the response for debugging
     console.log('Returning session response:', {
-      sessionId: sessionData.session?.substring(0, 8) + '...',
-      clientId: knotClientId.substring(0, 8) + '...',
+      sessionId: sessionData.session ? `${sessionData.session.substring(0, 8)}...` : 'missing',
+      clientId: knotClientId ? `${knotClientId.substring(0, 8)}...` : 'missing',
       environment,
       clientIdLength: knotClientId.length,
     })
