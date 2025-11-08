@@ -48,7 +48,7 @@ export default function LocationsPage() {
       />
 
       {/* Location Search - Top Left */}
-      <div className="absolute top-6 left-6 z-[1000]">
+      <div className="absolute top-6 left-12 z-[1000]">
         <LocationSearch onLocationSelect={setSelectedLocation} />
       </div>
 
