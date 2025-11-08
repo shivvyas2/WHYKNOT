@@ -14,7 +14,8 @@ export interface KnotSDKConfig {
 }
 
 export interface KnotSDKCallbacks {
-  onSuccess?: (product: string, merchant: string) => void
+  // onSuccess receives (product, details) where details contains merchantName
+  onSuccess?: (product: string, details: { merchantName: string }) => void
   onError?: (product: string, errorCode: string, errorDescription: string) => void
   onEvent?: (
     product: string,
