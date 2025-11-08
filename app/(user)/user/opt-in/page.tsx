@@ -4,25 +4,15 @@ import { useState } from 'react'
 import { useKnotSDK } from '@/lib/knot/sdk'
 import { env } from '@/config/env'
 
-// Merchant IDs from Knot (official IDs from Knot)
+// Merchant IDs from Knot - Only Instacart and Uber Eats
 const MERCHANT_IDS: Record<string, number> = {
-  amazon: 44,
-  costco: 165,
-  doordash: 19,
   instacart: 40,
-  target: 12,
   ubereats: 36,
-  walmart: 45,
 }
 
 const MERCHANT_DISPLAY_NAMES: Record<string, string> = {
-  amazon: 'Amazon',
-  costco: 'Costco',
-  doordash: 'DoorDash',
   instacart: 'Instacart',
-  target: 'Target',
   ubereats: 'Uber Eats',
-  walmart: 'Walmart',
 }
 
 export default function OptInPage() {
@@ -42,12 +32,20 @@ export default function OptInPage() {
     setError(null)
 
     try {
-      // Create a Knot session
+      // Get the merchant ID for the selected service
+      const merchantId = MERCHANT_IDS[merchant]
+      if (!merchantId) {
+        setError('Invalid merchant selected')
+        setLoading(false)
+        return
+      }
+
+      // Create a Knot session with the specific merchant ID
       const sessionResponse = await fetch('/api/knot/session', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          merchantIds: MERCHANT_IDS[merchant] ? [MERCHANT_IDS[merchant]] : [],
+          merchantIds: [merchantId], // Pass the specific merchant ID
         }),
       })
 
@@ -69,27 +67,31 @@ export default function OptInPage() {
           clientId,
           environment: (env.KNOT_ENVIRONMENT as 'development' | 'production') || 'development',
           product: 'transaction_link',
-          merchantIds: MERCHANT_IDS[merchant] ? [MERCHANT_IDS[merchant]] : undefined,
+          merchantIds: [merchantId], // Pass the specific merchant ID to SDK
           entryPoint: 'opt-in',
           useCategories: true,
           useSearch: true,
         },
         {
-          onSuccess: async (product, merchant) => {
-            console.log('Knot SDK Success:', product, merchant)
+          onSuccess: async (product, merchantName) => {
+            console.log('Knot SDK Success:', product, merchantName)
             // Handle successful connection
-            // Sync transactions after successful connection
+            // Sync transactions for the selected merchant after successful connection
             try {
-              const merchantId = MERCHANT_IDS[selectedMerchant || '']
-              if (merchantId) {
-                await fetch('/api/knot/transactions/sync', {
-                  method: 'POST',
-                  headers: { 'Content-Type': 'application/json' },
-                  body: JSON.stringify({
-                    merchant_id: merchantId,
-                    limit: 10,
-                  }),
-                })
+              const syncResponse = await fetch('/api/knot/transactions/sync', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                  merchant_id: merchantId,
+                  limit: 10,
+                }),
+              })
+
+              if (syncResponse.ok) {
+                const syncData = await syncResponse.json()
+                console.log('Transactions synced:', syncData)
+              } else {
+                console.error('Failed to sync transactions:', await syncResponse.json())
               }
             } catch (error) {
               console.error('Failed to sync transactions:', error)
@@ -110,11 +112,18 @@ export default function OptInPage() {
             // Handle REFRESH_SESSION_REQUEST
             if (event === 'REFRESH_SESSION_REQUEST') {
               // Create a new session and update the SDK
+              const refreshMerchantId = MERCHANT_IDS[selectedMerchant || '']
+              if (!refreshMerchantId) {
+                setError('Invalid merchant selected')
+                setLoading(false)
+                return
+              }
+
               fetch('/api/knot/session', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
-                  merchantIds: MERCHANT_IDS[selectedMerchant || ''] ? [MERCHANT_IDS[selectedMerchant || '']] : [],
+                  merchantIds: [refreshMerchantId],
                 }),
               })
                 .then((res) => res.json())
@@ -127,26 +136,28 @@ export default function OptInPage() {
                         clientId,
                         environment: (env.KNOT_ENVIRONMENT as 'development' | 'production') || 'development',
                         product: 'transaction_link',
-                        merchantIds: MERCHANT_IDS[selectedMerchant || ''] ? [MERCHANT_IDS[selectedMerchant || '']] : undefined,
+                        merchantIds: [refreshMerchantId],
                         entryPoint: 'opt-in',
                         useCategories: true,
                         useSearch: true,
                       },
                       {
-                        onSuccess: async (product, merchant) => {
-                          console.log('Knot SDK Success (after refresh):', product, merchant)
+                        onSuccess: async (product, merchantName) => {
+                          console.log('Knot SDK Success (after refresh):', product, merchantName)
                           // Sync transactions after successful connection
                           try {
-                            const merchantId = MERCHANT_IDS[selectedMerchant || '']
-                            if (merchantId) {
-                              await fetch('/api/knot/transactions/sync', {
-                                method: 'POST',
-                                headers: { 'Content-Type': 'application/json' },
-                                body: JSON.stringify({
-                                  merchant_id: merchantId,
-                                  limit: 10,
-                                }),
-                              })
+                            const syncResponse = await fetch('/api/knot/transactions/sync', {
+                              method: 'POST',
+                              headers: { 'Content-Type': 'application/json' },
+                              body: JSON.stringify({
+                                merchant_id: refreshMerchantId,
+                                limit: 10,
+                              }),
+                            })
+
+                            if (syncResponse.ok) {
+                              const syncData = await syncResponse.json()
+                              console.log('Transactions synced:', syncData)
                             }
                           } catch (error) {
                             console.error('Failed to sync transactions:', error)
@@ -196,8 +207,8 @@ export default function OptInPage() {
       <h1 className="text-3xl font-bold mb-6">Share Your Transaction Data</h1>
       <div className="bg-white p-6 rounded-lg shadow max-w-2xl">
         <p className="text-gray-600 mb-6">
-          Connect your merchant accounts to share transaction data. You&apos;ll receive
-          monthly coupons and exclusive deals based on your spending patterns.
+          Select which service you want to connect and share your transaction data from. 
+          You&apos;ll receive monthly coupons and exclusive deals based on your spending patterns.
         </p>
 
         {error && (
