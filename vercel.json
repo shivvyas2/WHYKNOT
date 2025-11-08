@@ -1,0 +1,16 @@
+{
+  "buildCommand": "npm run build",
+  "devCommand": "npm run dev",
+  "installCommand": "npm install",
+  "framework": "nextjs",
+  "regions": ["iad1"],
+  "env": {
+    "NEXT_PUBLIC_SUPABASE_URL": "@supabase_url",
+    "NEXT_PUBLIC_SUPABASE_ANON_KEY": "@supabase_anon_key",
+    "SUPABASE_SERVICE_ROLE_KEY": "@supabase_service_role_key",
+    "NEXT_PUBLIC_KNOT_API_KEY": "@knot_api_key",
+    "KNOT_API_SECRET": "@knot_api_secret",
+    "KNOT_WEBHOOK_SECRET": "@knot_webhook_secret"
+  }
+}
+
