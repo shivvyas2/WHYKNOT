@@ -176,11 +176,25 @@ export async function POST(request: Request) {
     console.error('Session creation error:', error)
     const errorMessage = error instanceof Error ? error.message : 'Unknown error'
     const errorStack = error instanceof Error ? error.stack : undefined
+    const errorName = error instanceof Error ? error.name : 'Error'
+    
+    // In development, return detailed error information
+    const isDevelopment = process.env.NODE_ENV === 'development'
+    
     return NextResponse.json(
       { 
         error: 'Internal server error',
         message: errorMessage,
-        ...(process.env.NODE_ENV === 'development' && { stack: errorStack }),
+        name: errorName,
+        ...(isDevelopment && { 
+          stack: errorStack,
+          // Include full error object in development
+          details: error instanceof Error ? {
+            name: error.name,
+            message: error.message,
+            stack: error.stack,
+          } : String(error),
+        }),
       },
       { status: 500 }
     )
