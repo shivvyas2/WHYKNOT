@@ -8,9 +8,9 @@ export default function Home() {
           {/* Replace 'y' and 'K' with logos: YC and KnotAPI */}
           <span className="align-middle">W</span>
           <span className="align-middle">h</span>
-          <img src="/assets/yc.png" alt="YC" className="inline-block align-middle mx-1 mt-4 h-6 w-6" />
+          <img src="/assets/yc.png" alt="YC" className="inline-block align-middle mx-1 mt-4 h-8 w-8" />
 
-          <img src="/assets/knot.jpg" alt="Knot API" className="inline-block align-middle mx-1 h-6 w-6" />
+          <img src="/assets/knot.jpg" alt="Knot API" className="inline-block align-middle mx-1 h-9 w-9" />
           <span className="align-middle">not</span>
         </h1>
         <p className="text-center mb-12 text-lg">
