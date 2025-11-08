@@ -7,9 +7,21 @@ import { env } from '@/config/env'
 
 export async function POST(request: Request) {
   try {
-    const user = await getAuthUser()
-    if (!user) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    // In mock mode, create a mock user
+    const MOCK_MODE = process.env.MOCK_MODE === 'true' || process.env.NODE_ENV === 'development'
+    
+    let user
+    if (MOCK_MODE) {
+      // Create a mock user for development
+      user = {
+        id: 'mock-user-id',
+        email: 'mock@example.com',
+      }
+    } else {
+      user = await getAuthUser()
+      if (!user) {
+        return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+      }
     }
 
     const body = await request.json()
