@@ -43,8 +43,8 @@ jobs:
       - run: npm ci
       - run: npm run build
         env:
-          # Set dummy values for CI build (env vars are optional in development)
-          NODE_ENV: development
+          # CI is automatically set by GitHub Actions
+          # Set placeholder values for CI build (env vars are optional in CI)
           NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL || 'https://placeholder.supabase.co' }}
           NEXT_PUBLIC_SUPABASE_ANON_KEY: ${{ secrets.NEXT_PUBLIC_SUPABASE_ANON_KEY || 'placeholder-key' }}
           SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY || 'placeholder-secret' }}

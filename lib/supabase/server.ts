@@ -7,7 +7,21 @@ export const createClient = async () => {
   const supabaseUrl = env.NEXT_PUBLIC_SUPABASE_URL || ''
   const supabaseAnonKey = env.NEXT_PUBLIC_SUPABASE_ANON_KEY || ''
   
+  // In CI or development, use placeholder values if missing
   if (!supabaseUrl || !supabaseAnonKey) {
+    if (process.env.CI || process.env.NODE_ENV !== 'production') {
+      return createServerClient(
+        'https://placeholder.supabase.co',
+        'placeholder-key',
+        {
+          cookies: {
+            get() { return undefined },
+            set() {},
+            remove() {},
+          },
+        }
+      )
+    }
     throw new Error('Missing Supabase environment variables')
   }
 

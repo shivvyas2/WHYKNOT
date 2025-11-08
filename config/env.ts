@@ -18,17 +18,17 @@ const envSchema = z.object({
 export type Env = z.infer<typeof envSchema>
 
 function getEnv(): Env {
+  // In CI or development, allow missing optional env vars
+  if (process.env.CI || process.env.NODE_ENV !== 'production') {
+    return envSchema.partial().parse(process.env) as Env
+  }
+  
   try {
     return envSchema.parse(process.env)
   } catch (error) {
     if (error instanceof z.ZodError) {
-      // Only throw in production, allow missing vars in development/CI
-      if (process.env.NODE_ENV === 'production' && !process.env.CI) {
-        const missingVars = error.errors.map((e) => e.path.join('.')).join(', ')
-        throw new Error(`Missing or invalid environment variables: ${missingVars}`)
-      }
-      // In development/CI, return partial env with defaults
-      return envSchema.partial().parse(process.env) as Env
+      const missingVars = error.errors.map((e) => e.path.join('.')).join(', ')
+      throw new Error(`Missing or invalid environment variables: ${missingVars}`)
     }
     throw error
   }
