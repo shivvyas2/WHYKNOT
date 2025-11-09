@@ -30,7 +30,7 @@ export default function Chatbot() {
       const json = await res.json()
       const reply = json?.reply ?? 'Sorry, I could not respond.'
       setMessages((m) => [...m, { from: 'bot', text: reply }])
-    } catch (err) {
+    } catch {
       setMessages((m) => [...m, { from: 'bot', text: 'Network error' }])
     } finally {
       setLoading(false)
