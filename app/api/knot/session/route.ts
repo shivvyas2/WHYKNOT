@@ -183,9 +183,32 @@ export async function POST(request: Request) {
       merchantIds,
       endpoint: `${baseUrl}/session/create`,
       clientIdPreview: knotClientId ? `${knotClientId.substring(0, 8)}...` : 'missing',
+      willIncludeMerchantIds: merchantIds && merchantIds.length > 0 && environment !== 'production',
     })
 
     // Call Knot's Create Session API
+    // In production, merchant_ids might not be accepted by the endpoint
+    // Build request body conditionally
+    const requestBody: {
+      type: string
+      external_user_id: string
+      merchant_ids?: number[]
+    } = {
+      type: 'transaction_link',
+      external_user_id: dbUser.id,
+    }
+    
+    // Only include merchant_ids if provided and not in production
+    // (Production API might not accept this parameter)
+    if (merchantIds && merchantIds.length > 0 && environment !== 'production') {
+      requestBody.merchant_ids = merchantIds
+    }
+    
+    console.log('Knot API request body:', {
+      ...requestBody,
+      external_user_id: requestBody.external_user_id.substring(0, 8) + '...',
+    })
+    
     let knotResponse
     try {
       knotResponse = await fetch(`${baseUrl}/session/create`, {
@@ -194,11 +217,7 @@ export async function POST(request: Request) {
           'Content-Type': 'application/json',
           'Authorization': authHeader,
         },
-        body: JSON.stringify({
-          type: 'transaction_link',
-          external_user_id: dbUser.id,
-          merchant_ids: merchantIds || [],
-        }),
+        body: JSON.stringify(requestBody),
       })
     } catch (error) {
       console.error('Error calling Knot API:', error)
