@@ -2,6 +2,7 @@
 
 import { useState } from 'react'
 import { useKnotSDK } from '@/lib/knot/sdk'
+import { SuccessAnimation } from '@/components/user/SuccessAnimation'
 
 // Merchant IDs from Knot - Only DoorDash and Uber Eats
 const MERCHANT_IDS: Record<string, number> = {
@@ -18,6 +19,8 @@ export default function OptInPage() {
   const [selectedMerchant, setSelectedMerchant] = useState<string | null>(null)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [showSuccess, setShowSuccess] = useState(false)
+  const [syncedTransactions, setSyncedTransactions] = useState<any[]>([])
   const { open, isReady } = useKnotSDK()
 
   const handleMerchantSelect = async (merchant: string) => {
@@ -123,7 +126,8 @@ export default function OptInPage() {
         {
           onSuccess: async (product, details) => {
             console.log('Knot SDK Success:', product, details)
-            // Handle successful connection
+            setLoading(false)
+            
             // Sync transactions for the selected merchant after successful connection
             try {
               const syncResponse = await fetch('/api/knot/transactions/sync', {
@@ -131,13 +135,14 @@ export default function OptInPage() {
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
                   merchant_id: merchantId,
-                  limit: 10,
+                  limit: 50, // Get more transactions
                 }),
               })
 
               if (syncResponse.ok) {
                 const syncData = await syncResponse.json()
                 console.log('Transactions synced:', syncData)
+                setSyncedTransactions(syncData.transactions || [])
               } else {
                 console.error('Failed to sync transactions:', await syncResponse.json())
               }
@@ -145,9 +150,8 @@ export default function OptInPage() {
               console.error('Failed to sync transactions:', error)
             }
             
-            setLoading(false)
-            // Redirect to main page to see coupons
-            window.location.href = '/user'
+            // Show success animation
+            setShowSuccess(true)
           },
           onError: (product, errorCode, errorDescription) => {
             console.error('Knot SDK Error:', product, errorCode, errorDescription)
@@ -192,6 +196,8 @@ export default function OptInPage() {
                       {
                         onSuccess: async (product, details) => {
                           console.log('Knot SDK Success (after refresh):', product, details)
+                          setLoading(false)
+                          
                           // Sync transactions after successful connection
                           try {
                             const syncResponse = await fetch('/api/knot/transactions/sync', {
@@ -199,20 +205,21 @@ export default function OptInPage() {
                               headers: { 'Content-Type': 'application/json' },
                               body: JSON.stringify({
                                 merchant_id: refreshMerchantId,
-                                limit: 10,
+                                limit: 50,
                               }),
                             })
 
                             if (syncResponse.ok) {
                               const syncData = await syncResponse.json()
                               console.log('Transactions synced:', syncData)
+                              setSyncedTransactions(syncData.transactions || [])
                             }
                           } catch (error) {
                             console.error('Failed to sync transactions:', error)
                           }
                           
-                          setLoading(false)
-                          window.location.href = '/user'
+                          // Show success animation
+                          setShowSuccess(true)
                         },
                         onError: (product, errorCode, errorDescription) => {
                           console.error('Knot SDK Error (after refresh):', product, errorCode, errorDescription)
@@ -248,6 +255,28 @@ export default function OptInPage() {
       setError(error instanceof Error ? error.message : 'Failed to start opt-in process')
       setLoading(false)
     }
+  }
+
+  // Show success animation if integration was successful
+  if (showSuccess) {
+    return (
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        <SuccessAnimation
+          onComplete={() => {
+            // Redirect to transactions page after animation
+            window.location.href = '/user/transactions'
+          }}
+          duration={3000}
+        />
+        {syncedTransactions.length > 0 && (
+          <div className="mt-6 text-center">
+            <p className="text-gray-600">
+              Successfully synced {syncedTransactions.length} transactions!
+            </p>
+          </div>
+        )}
+      </div>
+    )
   }
 
   return (
