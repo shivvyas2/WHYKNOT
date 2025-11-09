@@ -168,21 +168,17 @@ export async function POST(request: Request) {
 
     // Determine environment URL
     const environment = env.KNOT_ENVIRONMENT || 'development'
-    
-    // Try Bearer token authentication (production might use this instead of Basic Auth)
-    // Many APIs use Bearer token with the API secret as the token
-    const authHeader = environment === 'production'
-      ? `Bearer ${knotApiSecret}`  // Production: Try Bearer token
-      : `Basic ${Buffer.from(`${knotClientId}:${knotApiSecret}`).toString('base64')}`  // Development: Basic Auth
     const baseUrl = environment === 'production' 
       ? 'https://knotapi.com' 
       : 'https://development.knotapi.com'
     
-    // Knot API endpoint: POST /session/create
-    // Try with /api prefix as many APIs require it
-    const endpointPath = environment === 'production'
-      ? '/api/session/create'  // Production might need /api prefix
-      : '/session/create'       // Development uses direct path
+    // Knot API endpoint: POST /session/create (same for both environments)
+    const endpointPath = '/session/create'
+    
+    // Use Basic Auth for both - it works in development, so try it for production too
+    // If production needs Bearer token, we can add fallback logic
+    const authString = Buffer.from(`${knotClientId}:${knotApiSecret}`).toString('base64')
+    const authHeader = `Basic ${authString}`
 
     console.log('Calling Knot API:', {
       baseUrl,
