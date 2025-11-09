@@ -175,13 +175,20 @@ export async function POST(request: Request) {
     const baseUrl = environment === 'production' 
       ? 'https://knotapi.com' 
       : 'https://development.knotapi.com'
+    
+    // Try different endpoint paths - production might use a different structure
+    // Common variations: /session/create, /v1/session/create, /api/v1/session/create, /sessions
+    // Try multiple endpoints in order if one fails
+    const endpointPaths = environment === 'production'
+      ? ['/v1/session/create', '/session/create', '/api/v1/session/create', '/sessions']  // Production variations
+      : ['/session/create']  // Development uses unversioned
 
     console.log('Calling Knot API:', {
       baseUrl,
       environment,
       externalUserId: dbUser.id,
       merchantIds,
-      endpoint: `${baseUrl}/session/create`,
+      endpointPaths,
       clientIdPreview: knotClientId ? `${knotClientId.substring(0, 8)}...` : 'missing',
       willIncludeMerchantIds: merchantIds && merchantIds.length > 0 && environment !== 'production',
     })
@@ -209,25 +216,61 @@ export async function POST(request: Request) {
       external_user_id: requestBody.external_user_id.substring(0, 8) + '...',
     })
     
-    let knotResponse
-    try {
-      knotResponse = await fetch(`${baseUrl}/session/create`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': authHeader,
-        },
-        body: JSON.stringify(requestBody),
-      })
-    } catch (error) {
-      console.error('Error calling Knot API:', error)
+    // Try each endpoint path until one works
+    let knotResponse: Response | null = null
+    let lastError: Error | null = null
+    
+    for (const endpointPath of endpointPaths) {
+      try {
+        console.log(`Trying endpoint: ${baseUrl}${endpointPath}`)
+        knotResponse = await fetch(`${baseUrl}${endpointPath}`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': authHeader,
+          },
+          body: JSON.stringify(requestBody),
+        })
+        
+        // If we get a successful response or a non-405 error, stop trying other endpoints
+        // 405 means method not allowed, so try next endpoint
+        if (knotResponse.status !== 405) {
+          console.log(`Endpoint ${endpointPath} returned status ${knotResponse.status}, using this endpoint`)
+          break
+        }
+        
+        // If 405, try next endpoint
+        console.log(`Endpoint ${endpointPath} returned 405 (Method not allowed), trying next...`)
+        knotResponse = null
+      } catch (error) {
+        lastError = error instanceof Error ? error : new Error(String(error))
+        console.error(`Error trying endpoint ${endpointPath}:`, error)
+        // Continue to next endpoint
+        knotResponse = null
+      }
+    }
+    
+    // If we tried all endpoints and still got 405 or no response
+    if (!knotResponse) {
+      if (lastError) {
+        console.error('Error calling Knot API:', lastError)
+        return NextResponse.json(
+          { 
+            error: 'Failed to call Knot API', 
+            message: lastError.message,
+            details: `Tried endpoints: ${endpointPaths.join(', ')}`,
+          },
+          { status: 500 }
+        )
+      }
+      // All endpoints returned 405
       return NextResponse.json(
         { 
-          error: 'Failed to call Knot API', 
-          message: error instanceof Error ? error.message : 'Unknown error',
-          details: process.env.NODE_ENV === 'development' ? String(error) : undefined,
+          error: 'Method not allowed for any endpoint', 
+          message: `Tried all endpoints: ${endpointPaths.join(', ')}. All returned 405 Method Not Allowed.`,
+          hint: 'Check Knot API documentation for correct endpoint path and method.',
         },
-        { status: 500 }
+        { status: 405 }
       )
     }
 
