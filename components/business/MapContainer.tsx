@@ -19,7 +19,9 @@ export function MapContainer({ center, category, onAreaClick }: MapContainerProp
   const heatLayerRef = useRef<any>(null);
   const restaurantMarkersRef = useRef<L.Marker<any>[]>([]);
   const fetchTimerRef = useRef<number | null>(null);
+  const categoryRef = useRef(category);
   const minZoomForRestaurants = 10;
+  const cuisineFetchAbortRef = useRef<AbortController | null>(null);
 
   useEffect(() => {
     if (typeof window === 'undefined') return
@@ -92,6 +94,14 @@ export function MapContainer({ center, category, onAreaClick }: MapContainerProp
     }
   }, [center]);
 
+  useEffect(() => {
+    categoryRef.current = category
+    if (mapRef.current) {
+      // immediately refresh markers when cuisine changes
+      fetchRestaurantsForView(true)
+    }
+  }, [category])
+
   // Update heatmap based on category
   useEffect(() => {
     if (mapRef.current) {
@@ -117,20 +127,61 @@ export function MapContainer({ center, category, onAreaClick }: MapContainerProp
     }
   }, [center, category]);
 
+  const CUISINE_PRESETS: Record<
+    string,
+    { regex: string | null; keywords: string[]; nameKeywords?: string[] }
+  > = {
+    all: { regex: null, keywords: [] },
+    mexican: { regex: 'mexican|taco', keywords: ['mexican', 'taco'] },
+    indian: { regex: 'indian', keywords: ['indian'] },
+    italian: { regex: 'italian|pizza|pasta', keywords: ['italian', 'pizza', 'pasta'] },
+    chinese: { regex: 'chinese|szechuan|szechwan', keywords: ['chinese', 'szechuan', 'szechwan'] },
+    japanese: { regex: 'japanese|sushi|ramen|izakaya', keywords: ['japanese', 'sushi', 'ramen', 'izakaya'] },
+    thai: { regex: 'thai', keywords: ['thai'] },
+    american: {
+      regex: 'american|burger|bbq|steakhouse|diner',
+      keywords: ['american', 'burger', 'bbq', 'steakhouse', 'diner'],
+    },
+    mediterranean: {
+      regex: 'mediterranean|greek|lebanese|turkish|mezze|falafel',
+      keywords: ['mediterranean', 'greek', 'lebanese', 'turkish', 'mezze', 'falafel', 'middle eastern'],
+    },
+  }
+
   // Build query to fetch restaurants within current map bounds using Overpass API
   function buildOverpassBBoxQuery(south: number, west: number, north: number, east: number) {
     // Overpass uses (south,west,north,east)
+    const activeCategory = categoryRef.current ?? 'all'
+    const preset = CUISINE_PRESETS[activeCategory] ?? CUISINE_PRESETS.all
+    const cuisineClause = preset.regex ? `["cuisine"~"${preset.regex}", i]` : ''
     return `
       [out:json][timeout:25];
-      node["amenity"="restaurant"](${south},${west},${north},${east});
+      node["amenity"="restaurant"]${cuisineClause}(${south},${west},${north},${east});
       out body;
     `;
   }
 
-  async function fetchRestaurantsForView() {
+  function matchesCuisineTag(value: unknown, categoryValue: string) {
+    if (!categoryValue || categoryValue === 'all') return true
+    if (typeof value !== 'string') return false
+    const normalized = value
+      .split(';')
+      .map((part) => part.trim().toLowerCase())
+      .filter(Boolean)
+
+    if (normalized.length === 0) return false
+
+    const keywords = (CUISINE_PRESETS[categoryValue] ?? CUISINE_PRESETS.all).keywords
+
+    return normalized.some((valuePart) =>
+      keywords.some((keyword) => valuePart.includes(keyword)),
+    )
+  }
+
+  async function fetchRestaurantsForView(force = false) {
     if (!mapRef.current) return;
     const z = mapRef.current.getZoom();
-    if (z < minZoomForRestaurants) {
+    if (!force && z < minZoomForRestaurants) {
       // remove existing markers if zoomed out
       restaurantMarkersRef.current.forEach((m) => mapRef.current?.removeLayer(m));
       restaurantMarkersRef.current = [];
@@ -146,8 +197,14 @@ export function MapContainer({ center, category, onAreaClick }: MapContainerProp
     const query = buildOverpassBBoxQuery(south, west, north, east);
     const url = `https://overpass-api.de/api/interpreter?data=${encodeURIComponent(query)}`;
 
+    if (cuisineFetchAbortRef.current) {
+      cuisineFetchAbortRef.current.abort()
+    }
+    const abortController = new AbortController()
+    cuisineFetchAbortRef.current = abortController
+
     try {
-      const res = await fetch(url);
+      const res = await fetch(url, { signal: abortController.signal });
       if (!res.ok) throw new Error(`Overpass error ${res.status}`);
       const data = await res.json();
 
@@ -158,7 +215,18 @@ export function MapContainer({ center, category, onAreaClick }: MapContainerProp
       if (!data.elements || !Array.isArray(data.elements)) return;
 
       // limit number of markers to avoid overload
-      const nodes = data.elements.filter((el: any) => el.type === 'node');
+      const activeCategory = categoryRef.current ?? 'all'
+      const preset = CUISINE_PRESETS[activeCategory] ?? CUISINE_PRESETS.all
+      const nodes = data.elements.filter((el: any) => {
+        if (el.type !== 'node') return false
+        if (activeCategory === 'all') return true
+        if (matchesCuisineTag(el.tags?.cuisine, activeCategory)) return true
+        if (typeof el.tags?.['name'] === 'string') {
+          const name = el.tags['name'].toLowerCase()
+          return preset.keywords.some((keyword) => name.includes(keyword))
+        }
+        return false
+      });
       const max = 300;
       for (let i = 0; i < Math.min(nodes.length, max); i++) {
         const node = nodes[i];
@@ -174,7 +242,14 @@ export function MapContainer({ center, category, onAreaClick }: MapContainerProp
         restaurantMarkersRef.current.push(marker);
       }
     } catch (err) {
+      if ((err as DOMException).name === 'AbortError') {
+        return;
+      }
       console.warn('Failed to fetch restaurants', err);
+    } finally {
+      if (cuisineFetchAbortRef.current === abortController) {
+        cuisineFetchAbortRef.current = null;
+      }
     }
   }
 
