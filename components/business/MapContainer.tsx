@@ -1,33 +1,106 @@
 'use client'
 
-import { useEffect, useRef } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import L from 'leaflet'
 import 'leaflet/dist/leaflet.css'
 import 'leaflet.heat'
-import { generateHeatmapData } from '@/utils/mockData'
+import type { HeatLayerOptions } from 'leaflet.heat'
 
-// Fix Leaflet default icon paths for Next.js - will be set in useEffect
+import { AREA_RADIUS_METERS, computeAreaMetrics, convertMockInsightsToMetrics } from '@/lib/analytics/area'
+import type { AreaMetrics, AreaSelection } from '@/lib/analytics/area'
+import { type ParsedOrder, type StoreSummary, aggregateStores, clamp, parseOrders } from '@/lib/analytics/orders'
+import { generateHeatmapData, getAreaInsights } from '@/utils/mockData'
+
+export type { AreaMetrics, AreaSelection } from '@/lib/analytics/area'
+
+type Coordinates = [number, number]
 
 interface MapContainerProps {
-  center: [number, number];
-  category: string;
-  onAreaClick: (location: { lat: number; lng: number }) => void;
+  center: Coordinates
+  category: string
+  onAreaClick: (selection: AreaSelection) => void
+}
+
+interface MapData {
+  orders: ParsedOrder[]
+  stores: StoreSummary[]
+  isFallback: boolean
+}
+const MIN_ZOOM_FOR_RESTAURANTS = 10
+function computeHeatPoints(orders: ParsedOrder[], category: string): Array<[number, number, number]> {
+  const relevantOrders = orders.filter((order) => {
+    if (category === 'all') return true
+    if (order.category === 'unknown') return false
+    return order.category === category
+  })
+
+  if (relevantOrders.length === 0) {
+    return []
+  }
+
+  const buckets = new Map<
+    string,
+    { lat: number; lng: number; count: number }
+  >()
+
+  relevantOrders.forEach((order) => {
+    const lat = order.shippingLat
+    const lng = order.shippingLng
+    const key = `${lat.toFixed(3)}|${lng.toFixed(3)}`
+    const current = buckets.get(key)
+    if (current) {
+      current.count += 1
+    } else {
+      buckets.set(key, { lat, lng, count: 1 })
+    }
+  })
+
+  const counts = Array.from(buckets.values()).map((bucket) => bucket.count)
+  const maxCount = Math.max(...counts)
+
+  return Array.from(buckets.values()).map((bucket) => [
+    bucket.lat,
+    bucket.lng,
+    clamp(0.25 + bucket.count / maxCount, 0.25, 1) as number,
+  ])
+}
+
+function escapeHtml(str: string) {
+  return str.replace(/[&<>"']/g, (char) => {
+    switch (char) {
+      case '&':
+        return '&amp;'
+      case '<':
+        return '&lt;'
+      case '>':
+        return '&gt;'
+      case '"':
+        return '&quot;'
+      case "'":
+        return '&#39;'
+      default:
+        return char
+    }
+  })
 }
 
 export function MapContainer({ center, category, onAreaClick }: MapContainerProps) {
-  const mapRef = useRef<L.Map | null>(null);
-  const heatLayerRef = useRef<any>(null);
-  const restaurantMarkersRef = useRef<L.Marker<any>[]>([]);
-  const fetchTimerRef = useRef<number | null>(null);
-  const categoryRef = useRef(category);
-  const minZoomForRestaurants = 10;
-  const cuisineFetchAbortRef = useRef<AbortController | null>(null);
+  const mapRef = useRef<L.Map | null>(null)
+  const heatLayerRef = useRef<L.Layer | null>(null)
+  const restaurantMarkersRef = useRef<L.Marker[]>([])
+  const categoryRef = useRef(category)
+  const fetchTimerRef = useRef<number | null>(null)
+  const fetchRestaurantsForViewRef = useRef<(force?: boolean) => void>(() => {})
+  const mapDataRef = useRef<MapData>({ orders: [], stores: [], isFallback: true })
+
+  const [mapData, setMapData] = useState<MapData>(mapDataRef.current)
+  const [dataMessage, setDataMessage] = useState<string | null>('Loading live demand…')
+  const [filterMessage, setFilterMessage] = useState<string | null>(null)
 
   useEffect(() => {
     if (typeof window === 'undefined') return
-    
-    // Fix Leaflet default icon paths
-    delete (L.Icon.Default.prototype as any)._getIconUrl
+
+    delete (L.Icon.Default.prototype as unknown as { _getIconUrl?: unknown })._getIconUrl
     L.Icon.Default.mergeOptions({
       iconUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon.png',
       iconRetinaUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon-2x.png',
@@ -35,10 +108,9 @@ export function MapContainer({ center, category, onAreaClick }: MapContainerProp
     })
 
     if (!mapRef.current) {
-      // United States bounds only 
-      const usSouthWest = L.latLng(24.396308, -124.848974); // lat, lng
-      const usNorthEast = L.latLng(49.384358, -66.885444);
-      const usBounds = L.latLngBounds(usSouthWest, usNorthEast);
+      const usSouthWest = L.latLng(24.396308, -124.848974)
+      const usNorthEast = L.latLng(49.384358, -66.885444)
+      const usBounds = L.latLngBounds(usSouthWest, usNorthEast)
 
       mapRef.current = L.map('map', {
         center,
@@ -46,222 +118,252 @@ export function MapContainer({ center, category, onAreaClick }: MapContainerProp
         minZoom: 3,
         maxZoom: 30,
         maxBounds: usBounds,
-        // Prevent the user from panning far outside the bounds
         maxBoundsViscosity: 0.9,
         zoomControl: false,
-      });
-    L.control.zoom({ position: 'bottomleft' }).addTo(mapRef.current);
+      })
+
+      L.control.zoom({ position: 'bottomleft' }).addTo(mapRef.current)
+
       L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
         attribution: '© OpenStreetMap contributors',
         maxZoom: 30,
         detectRetina: true,
-      }).addTo(mapRef.current);
+      }).addTo(mapRef.current)
 
-      // Click handler for map
-      mapRef.current.on('click', (e) => {
-        onAreaClick({ lat: e.latlng.lat, lng: e.latlng.lng });
-      });
+      mapRef.current.on('click', (event) => {
+        const selection = buildSelection(event.latlng.lat, event.latlng.lng, mapDataRef.current, categoryRef.current ?? 'all')
+        onAreaClick(selection)
+      })
 
-      // Fetch restaurants for visible bounds after movement (debounced)
       const scheduleFetch = () => {
-        if (!mapRef.current) return;
+        if (!mapRef.current) return
         if (fetchTimerRef.current) {
-          window.clearTimeout(fetchTimerRef.current);
+          window.clearTimeout(fetchTimerRef.current)
         }
-        // debounce 600ms
         fetchTimerRef.current = window.setTimeout(() => {
-          fetchRestaurantsForView();
-        }, 600) as unknown as number;
-      };
+          fetchRestaurantsForViewRef.current()
+        }, 600) as unknown as number
+      }
 
-      mapRef.current.on('moveend', scheduleFetch);
-      // initial fetch
-      scheduleFetch();
+      mapRef.current.on('moveend', scheduleFetch)
+      scheduleFetch()
     }
 
     return () => {
       if (mapRef.current) {
-        mapRef.current.remove();
-        mapRef.current = null;
+        mapRef.current.remove()
+        mapRef.current = null
       }
-    };
-  }, []);
-
-  // Update center
-  useEffect(() => {
-    if (mapRef.current) {
-      mapRef.current.setView(center, 13);
     }
-  }, [center]);
+  }, [center, onAreaClick])
 
   useEffect(() => {
     categoryRef.current = category
-    if (mapRef.current) {
-      // immediately refresh markers when cuisine changes
-      fetchRestaurantsForView(true)
-    }
   }, [category])
 
-  // Update heatmap based on category
+  useEffect(() => {
+    mapDataRef.current = mapData
+  }, [mapData])
+
+  const fetchRestaurantsForView = useCallback(
+    (force = false) => {
+      if (!mapRef.current) return
+
+      const zoom = mapRef.current.getZoom()
+      if (!force && zoom < MIN_ZOOM_FOR_RESTAURANTS) {
+        restaurantMarkersRef.current.forEach((marker) => mapRef.current?.removeLayer(marker))
+        restaurantMarkersRef.current = []
+        return
+      }
+
+      restaurantMarkersRef.current.forEach((marker) => mapRef.current?.removeLayer(marker))
+      restaurantMarkersRef.current = []
+
+      const currentData = mapDataRef.current
+      if (currentData.isFallback || currentData.stores.length === 0) {
+        return
+      }
+
+      const bounds = mapRef.current.getBounds()
+      const activeCategory = categoryRef.current ?? 'all'
+
+      const visibleStores = currentData.stores.filter((store) => {
+        if (activeCategory !== 'all' && store.category !== activeCategory) {
+          return false
+        }
+        return bounds.contains(L.latLng(store.lat, store.lng))
+      })
+
+      const limit = 250
+      visibleStores.slice(0, limit).forEach((store) => {
+        const marker = L.marker([store.lat, store.lng])
+        marker.bindPopup(
+          `<strong>${escapeHtml(store.name)}</strong><br/>~${store.orderCount} orders/mo<br/>AOV $${store.avgOrderValue}`,
+        )
+        marker.on('click', () => {
+          const selection = buildSelection(store.lat, store.lng, mapDataRef.current, activeCategory)
+          onAreaClick(selection)
+        })
+        marker.addTo(mapRef.current!)
+        restaurantMarkersRef.current.push(marker)
+      })
+    },
+    [onAreaClick],
+  )
+
+  useEffect(() => {
+    fetchRestaurantsForViewRef.current = fetchRestaurantsForView
+  }, [fetchRestaurantsForView])
+
+  const createOrUpdateHeatLayer = useCallback(() => {
+    if (!mapRef.current) return
+
+    if (heatLayerRef.current) {
+      mapRef.current.removeLayer(heatLayerRef.current)
+      heatLayerRef.current = null
+    }
+
+    const activeCategory = categoryRef.current ?? 'all'
+    let points: Array<[number, number, number]> = []
+    let filterMessageLocal: string | null = null
+
+    if (!mapData.isFallback && mapData.orders.length > 0) {
+      points = computeHeatPoints(mapData.orders, activeCategory)
+      if (points.length === 0) {
+        filterMessageLocal = 'No recent orders match this filter — showing representative sample density.'
+      }
+    }
+
+    if (points.length === 0) {
+      points = generateHeatmapData(center, activeCategory)
+    }
+
+    heatLayerRef.current = (L as unknown as { heatLayer: (points: Array<[number, number, number]>, options: HeatLayerOptions) => L.Layer }).heatLayer(points, {
+      radius: 25,
+      blur: 15,
+      maxZoom: 17,
+      max: 1.0,
+      gradient: {
+        0.0: '#1d4ed8',
+        0.25: '#3b82f6',
+        0.5: '#f59e0b',
+        0.75: '#ef4444',
+        1.0: '#b91c1c',
+      },
+    })
+    heatLayerRef.current.addTo(mapRef.current)
+
+    setFilterMessage(filterMessageLocal)
+  }, [center, mapData])
+
+  useEffect(() => {
+    const controller = new AbortController()
+    const load = async () => {
+      setDataMessage('Loading live demand…')
+      try {
+        const response = await fetch('http://localhost:8000/api/mongo-data', {
+          cache: 'no-store',
+          signal: controller.signal,
+        })
+
+        if (!response.ok) {
+          throw new Error(`Request failed with status ${response.status}`)
+        }
+
+        const payload = await response.json()
+        const orders = parseOrders(payload?.data ?? [])
+        const stores = aggregateStores(orders)
+        const isFallback = orders.length === 0
+
+        const nextData: MapData = {
+          orders,
+          stores,
+          isFallback,
+        }
+
+        mapDataRef.current = nextData
+        setMapData(nextData)
+
+        if (isFallback) {
+          setDataMessage('No live orders returned — showing representative sample data.')
+        } else {
+          setDataMessage(null)
+        }
+      } catch (error) {
+        if (controller.signal.aborted) return
+        console.warn('Failed to load Knot data', error)
+        const fallbackData: MapData = { orders: [], stores: [], isFallback: true }
+        mapDataRef.current = fallbackData
+        setMapData(fallbackData)
+        setDataMessage('Live Knot data unavailable — showing representative sample data.')
+      }
+    }
+
+    load()
+
+    return () => {
+      controller.abort()
+    }
+  }, [])
+
   useEffect(() => {
     if (mapRef.current) {
-      if (heatLayerRef.current) {
-        mapRef.current.removeLayer(heatLayerRef.current);
-      }
-
-      const heatmapData = generateHeatmapData(center, category);
-
-      heatLayerRef.current = (L as any).heatLayer(heatmapData, {
-        radius: 25,
-        blur: 15,
-        maxZoom: 17,
-        max: 1.0,
-        gradient: {
-          0.0: '#0000ff',
-          0.25: '#00bfffff',
-          0.5: '#ffff00',
-          0.75: '#ff8c00',
-          1.0: '#ff0000'
-        }
-      }).addTo(mapRef.current);
+      mapRef.current.setView(center, 13)
     }
-  }, [center, category]);
+  }, [center])
 
-  const CUISINE_PRESETS: Record<
-    string,
-    { regex: string | null; keywords: string[]; nameKeywords?: string[] }
-  > = {
-    all: { regex: null, keywords: [] },
-    mexican: { regex: 'mexican|taco', keywords: ['mexican', 'taco'] },
-    indian: { regex: 'indian', keywords: ['indian'] },
-    italian: { regex: 'italian|pizza|pasta', keywords: ['italian', 'pizza', 'pasta'] },
-    chinese: { regex: 'chinese|szechuan|szechwan', keywords: ['chinese', 'szechuan', 'szechwan'] },
-    japanese: { regex: 'japanese|sushi|ramen|izakaya', keywords: ['japanese', 'sushi', 'ramen', 'izakaya'] },
-    thai: { regex: 'thai', keywords: ['thai'] },
-    american: {
-      regex: 'american|burger|bbq|steakhouse|diner',
-      keywords: ['american', 'burger', 'bbq', 'steakhouse', 'diner'],
-    },
-    mediterranean: {
-      regex: 'mediterranean|greek|lebanese|turkish|mezze|falafel',
-      keywords: ['mediterranean', 'greek', 'lebanese', 'turkish', 'mezze', 'falafel', 'middle eastern'],
-    },
-  }
+  useEffect(() => {
+    createOrUpdateHeatLayer()
+  }, [createOrUpdateHeatLayer, mapData])
 
-  // Build query to fetch restaurants within current map bounds using Overpass API
-  function buildOverpassBBoxQuery(south: number, west: number, north: number, east: number) {
-    // Overpass uses (south,west,north,east)
-    const activeCategory = categoryRef.current ?? 'all'
-    const preset = CUISINE_PRESETS[activeCategory] ?? CUISINE_PRESETS.all
-    const cuisineClause = preset.regex ? `["cuisine"~"${preset.regex}", i]` : ''
-    return `
-      [out:json][timeout:25];
-      node["amenity"="restaurant"]${cuisineClause}(${south},${west},${north},${east});
-      out body;
-    `;
-  }
+  useEffect(() => {
+    fetchRestaurantsForView(true)
+  }, [fetchRestaurantsForView, mapData])
 
-  function matchesCuisineTag(value: unknown, categoryValue: string) {
-    if (!categoryValue || categoryValue === 'all') return true
-    if (typeof value !== 'string') return false
-    const normalized = value
-      .split(';')
-      .map((part) => part.trim().toLowerCase())
-      .filter(Boolean)
+  useEffect(() => {
+    fetchRestaurantsForView(true)
+    createOrUpdateHeatLayer()
+  }, [category, fetchRestaurantsForView, createOrUpdateHeatLayer])
 
-    if (normalized.length === 0) return false
+  const statusBanner = useMemo(() => filterMessage ?? dataMessage, [dataMessage, filterMessage])
 
-    const keywords = (CUISINE_PRESETS[categoryValue] ?? CUISINE_PRESETS.all).keywords
+  return (
+    <div className="relative h-full w-full">
+      <div id="map" className="h-full w-full" />
+      {statusBanner && (
+        <div className="pointer-events-none absolute bottom-4 left-4 z-[1000] max-w-xs rounded-2xl bg-white/90 px-4 py-2 text-xs font-medium text-slate-600 shadow-lg shadow-slate-900/10">
+          {statusBanner}
+        </div>
+      )}
+    </div>
+  )
+}
 
-    return normalized.some((valuePart) =>
-      keywords.some((keyword) => valuePart.includes(keyword)),
-    )
-  }
-
-  async function fetchRestaurantsForView(force = false) {
-    if (!mapRef.current) return;
-    const z = mapRef.current.getZoom();
-    if (!force && z < minZoomForRestaurants) {
-      // remove existing markers if zoomed out
-      restaurantMarkersRef.current.forEach((m) => mapRef.current?.removeLayer(m));
-      restaurantMarkersRef.current = [];
-      return;
-    }
-
-    const bounds = mapRef.current.getBounds();
-    const south = bounds.getSouth();
-    const west = bounds.getWest();
-    const north = bounds.getNorth();
-    const east = bounds.getEast();
-
-    const query = buildOverpassBBoxQuery(south, west, north, east);
-    const url = `https://overpass-api.de/api/interpreter?data=${encodeURIComponent(query)}`;
-
-    if (cuisineFetchAbortRef.current) {
-      cuisineFetchAbortRef.current.abort()
-    }
-    const abortController = new AbortController()
-    cuisineFetchAbortRef.current = abortController
-
-    try {
-      const res = await fetch(url, { signal: abortController.signal });
-      if (!res.ok) throw new Error(`Overpass error ${res.status}`);
-      const data = await res.json();
-
-      // clear existing markers
-      restaurantMarkersRef.current.forEach((m) => mapRef.current?.removeLayer(m));
-      restaurantMarkersRef.current = [];
-
-      if (!data.elements || !Array.isArray(data.elements)) return;
-
-      // limit number of markers to avoid overload
-      const activeCategory = categoryRef.current ?? 'all'
-      const preset = CUISINE_PRESETS[activeCategory] ?? CUISINE_PRESETS.all
-      const nodes = data.elements.filter((el: any) => {
-        if (el.type !== 'node') return false
-        if (activeCategory === 'all') return true
-        if (matchesCuisineTag(el.tags?.cuisine, activeCategory)) return true
-        if (typeof el.tags?.['name'] === 'string') {
-          const name = el.tags['name'].toLowerCase()
-          return preset.keywords.some((keyword) => name.includes(keyword))
-        }
-        return false
-      });
-      const max = 300;
-      for (let i = 0; i < Math.min(nodes.length, max); i++) {
-        const node = nodes[i];
-        if (typeof node.lat !== 'number' || typeof node.lon !== 'number') continue;
-        const lat = node.lat;
-        const lng = node.lon;
-        const name = node.tags?.name ?? 'Restaurant';
-
-        const marker = L.marker([lat, lng]);
-        marker.bindPopup(`<strong>${escapeHtml(String(name))}</strong>`);
-        marker.on('click', () => onAreaClick({ lat, lng }));
-        marker.addTo(mapRef.current!);
-        restaurantMarkersRef.current.push(marker);
-      }
-    } catch (err) {
-      if ((err as DOMException).name === 'AbortError') {
-        return;
-      }
-      console.warn('Failed to fetch restaurants', err);
-    } finally {
-      if (cuisineFetchAbortRef.current === abortController) {
-        cuisineFetchAbortRef.current = null;
-      }
+function buildSelection(
+  lat: number,
+  lng: number,
+  data: MapData,
+  activeCategory: string,
+): AreaSelection {
+  if (!data.isFallback && data.orders.length > 0) {
+    const metrics = computeAreaMetrics(data.orders, data.stores, { lat, lng }, activeCategory)
+    return {
+      location: { lat, lng },
+      category: activeCategory,
+      metrics,
+      isFallback: false,
+      message: metrics.totalOrders === 0 ? 'No recorded orders in this radius yet.' : null,
     }
   }
-//clean restuarant names before displaying with leaflet
-  function escapeHtml(str: string) {
-    return str.replace(/[&<>"']/g, (s) => ({
-      '&': '&amp;',
-      '<': '&lt;',
-      '>': '&gt;',
-      '"': '&quot;',
-      "'": '&#39;'
-    } as any)[s]);
-  }
 
-  return <div id="map" className="w-full h-full" />;
+  const mock = getAreaInsights(activeCategory, { lat, lng })
+  const metrics = convertMockInsightsToMetrics(mock)
+
+  return {
+    location: { lat, lng },
+    category: activeCategory,
+    metrics,
+    isFallback: true,
+    message: 'Showing representative insights until live data is available.',
+  }
 }
