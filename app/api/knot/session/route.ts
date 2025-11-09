@@ -166,12 +166,14 @@ export async function POST(request: Request) {
       )
     }
 
-    // Create Basic Auth header
-    const authString = Buffer.from(`${knotClientId}:${knotApiSecret}`).toString('base64')
-    const authHeader = `Basic ${authString}`
-
     // Determine environment URL
     const environment = env.KNOT_ENVIRONMENT || 'development'
+    
+    // Try Bearer token authentication (production might use this instead of Basic Auth)
+    // Many APIs use Bearer token with the API secret as the token
+    const authHeader = environment === 'production'
+      ? `Bearer ${knotApiSecret}`  // Production: Try Bearer token
+      : `Basic ${Buffer.from(`${knotClientId}:${knotApiSecret}`).toString('base64')}`  // Development: Basic Auth
     const baseUrl = environment === 'production' 
       ? 'https://knotapi.com' 
       : 'https://development.knotapi.com'
