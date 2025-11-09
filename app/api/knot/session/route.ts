@@ -169,8 +169,8 @@ export async function POST(request: Request) {
     // Determine environment URL
     const environment = env.KNOT_ENVIRONMENT || 'development'
     const baseUrl = environment === 'production' 
-      ? 'https://knotapi.com' 
-      : 'https://development.knotapi.com'
+      ? 'https://production.knotapi.com'  // Correct production URL
+      : 'https://development.knotapi.com'  // Development URL
     
     // Knot API endpoint: POST /session/create (same for both environments)
     const endpointPath = '/session/create'

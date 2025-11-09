@@ -28,19 +28,9 @@ Content-Type: application/json
 
 ### 2. Test Knot's Production API Directly
 
-**⚠️ IMPORTANT:** If you get 405 errors, try these endpoint variations:
+**⚠️ CORRECT PRODUCTION URL:** `https://production.knotapi.com` (NOT `knotapi.com`)
 
-**Option 1 (Standard):**
-- Endpoint: `POST https://knotapi.com/session/create`
-
-**Option 2 (With /api prefix):**
-- Endpoint: `POST https://knotapi.com/api/session/create`
-
-**Option 3 (Versioned):**
-- Endpoint: `POST https://knotapi.com/v1/session/create`
-
-**Option 4 (RESTful):**
-- Endpoint: `POST https://knotapi.com/sessions`
+**Endpoint:** `POST https://production.knotapi.com/session/create`
 
 **Headers:**
 ```
@@ -121,7 +111,7 @@ Authorization: Basic <base64_encoded_credentials>
 
 1. **Create New Request**
    - Method: `POST`
-   - URL: `https://knotapi.com/session/create` (production)
+   - URL: `https://production.knotapi.com/session/create` (production - CORRECT URL)
    - OR: `https://development.knotapi.com/session/create` (development)
 
 2. **Authorization Tab**
@@ -223,8 +213,9 @@ Authorization: Basic <base64_encoded_credentials>
 **Production:**
 - Client ID: `a390e79d-2920-4440-9ba1-b747bc92790b`
 - Secret: `be1e86abb4fc42a3b904b2f52215847e`
-- Base URL: `https://knotapi.com`
-- Endpoint: `/session/create` (but getting 405 - may need different path)
+- Base URL: `https://production.knotapi.com` ⚠️ **CORRECT URL** (was using wrong `knotapi.com`)
+- Endpoint: `/session/create`
+- Full URL: `https://production.knotapi.com/session/create`
 
 ## ⚠️ 405 Error Diagnosis
 
