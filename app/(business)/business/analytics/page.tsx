@@ -596,7 +596,7 @@ export default function AnalyticsPage() {
             <button className="rounded-2xl border border-indigo-200 px-5 py-3 text-sm font-semibold text-indigo-600 transition hover:border-indigo-300 hover:text-indigo-700">
               Compare Neighborhoods
             </button>
-          </div>
+        </div>
         </section>
       </div>
     </div>
