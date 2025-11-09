@@ -12,6 +12,7 @@ import { CategoryDropdown } from '@/components/business/CategoryDropdown'
 import { AreaInsights } from '@/components/business/AreaInsights'
 import { Button } from '@/components/ui/button'
 import { ArrowLeft } from 'lucide-react'
+import type { AreaSelection } from '@/components/business/MapContainer'
 
 // Dynamically import MapContainer to prevent SSR
 const MapContainer = dynamic(
@@ -29,9 +30,7 @@ function LocationsPageInner() {
     40.3504, -74.6571,
   ])
   const [selectedCategory, setSelectedCategory] = useState<string>('all')
-  const [clickedArea, setClickedArea] = useState<{ lat: number; lng: number } | null>(
-    null
-  )
+  const [clickedArea, setClickedArea] = useState<AreaSelection | null>(null)
   const [selectedLabel, setSelectedLabel] = useState<string | undefined>(undefined)
 
   // Make the page full-screen by removing default layout constraints
@@ -132,13 +131,7 @@ function LocationsPageInner() {
       </div>
 
       {/* Area Insights Panel - Slides in when area is clicked */}
-      {clickedArea && (
-        <AreaInsights
-          location={clickedArea}
-          category={selectedCategory}
-          onClose={() => setClickedArea(null)}
-        />
-      )}
+      {clickedArea && <AreaInsights data={clickedArea} onClose={() => setClickedArea(null)} />}
     </div>
   )
 }

@@ -108,7 +108,24 @@ export async function POST(request: Request) {
     })
 
     if (!syncResponse.ok) {
-      const errorData = await syncResponse.json()
+      // Read response as text first, then try to parse as JSON
+      // This avoids "Body has already been read" error
+      let errorData
+      try {
+        const textData = await syncResponse.text()
+        // Try to parse as JSON, but if it fails, use the text as the message
+        try {
+          errorData = JSON.parse(textData)
+        } catch {
+          errorData = { message: textData }
+        }
+      } catch (textError) {
+        errorData = { 
+          message: `Failed to read error response: ${textError instanceof Error ? textError.message : 'Unknown error'}`,
+          status: syncResponse.status,
+          statusText: syncResponse.statusText,
+        }
+      }
       console.error('Knot transaction sync error:', errorData)
       return NextResponse.json(
         { error: 'Failed to sync transactions', details: errorData },

@@ -2,7 +2,6 @@
 
 import { useState } from 'react'
 import { useKnotSDK } from '@/lib/knot/sdk'
-import { env } from '@/config/env'
 
 // Merchant IDs from Knot - Only DoorDash and Uber Eats
 const MERCHANT_IDS: Record<string, number> = {
@@ -51,7 +50,11 @@ export default function OptInPage() {
 
       if (!sessionResponse.ok) {
         const errorData = await sessionResponse.json()
-        throw new Error(errorData.error || 'Failed to create session')
+        // Include more details in the error message
+        const errorMessage = errorData.message || errorData.error || 'Failed to create session'
+        const errorDetails = errorData.details ? ` Details: ${JSON.stringify(errorData.details)}` : ''
+        const errorHint = errorData.hint ? ` Hint: ${errorData.hint}` : ''
+        throw new Error(`${errorMessage}${errorDetails}${errorHint}`)
       }
 
       const sessionData = await sessionResponse.json()
@@ -65,17 +68,16 @@ export default function OptInPage() {
       const { sessionId, clientId: clientIdFromApi, environment: envFromApi } = sessionData
 
       // Use client ID from API, or fallback to env variable
-      // IMPORTANT: NEXT_PUBLIC_ variables are embedded at build time
-      const envClientId = typeof window !== 'undefined' 
-        ? (window as any).__NEXT_DATA__?.env?.NEXT_PUBLIC_KNOT_CLIENT_ID 
-          || process.env.NEXT_PUBLIC_KNOT_CLIENT_ID
-          || env.NEXT_PUBLIC_KNOT_CLIENT_ID
-        : env.NEXT_PUBLIC_KNOT_CLIENT_ID
+      // IMPORTANT: NEXT_PUBLIC_ variables are embedded at build time by Next.js
+      // In Vercel production, these are set from environment variables
+      const envClientId = process.env.NEXT_PUBLIC_KNOT_CLIENT_ID
       
       const clientId = clientIdFromApi || envClientId
       
       // Determine environment - use from API response or fallback to env
-      const environment = (envFromApi || env.KNOT_ENVIRONMENT || 'development') as 'development' | 'production'
+      // NEXT_PUBLIC_ variables are available on client via process.env
+      const envEnvironment = process.env.NEXT_PUBLIC_KNOT_ENVIRONMENT as 'development' | 'production' | undefined
+      const environment = (envFromApi || envEnvironment || 'development') as 'development' | 'production'
       
       // Log what we're passing to SDK for debugging
       console.log('Opening Knot SDK with:', {
@@ -87,17 +89,18 @@ export default function OptInPage() {
         clientIdSource: clientIdFromApi ? 'from API' : (envClientId ? 'from env' : 'NOT FOUND'),
         environment,
         merchantId,
-        processEnvCheck: typeof process !== 'undefined' && process.env.NEXT_PUBLIC_KNOT_CLIENT_ID ? 'set in process.env' : 'not in process.env',
+        processEnvCheck: process.env.NEXT_PUBLIC_KNOT_CLIENT_ID ? 'set in process.env' : 'not in process.env',
+        envEnvironment: envEnvironment || 'not set',
       })
 
       // Validate client ID is present
       if (!clientId || clientId.trim() === '') {
         console.error('Client ID validation failed:', {
           clientIdFromApi,
-          envClientId: env.NEXT_PUBLIC_KNOT_CLIENT_ID,
+          envClientId: process.env.NEXT_PUBLIC_KNOT_CLIENT_ID,
           sessionData,
         })
-        throw new Error('Client ID is missing. Please check your environment variables.')
+        throw new Error('Client ID is missing. Please check your   variables.')
       }
 
       // Validate session ID is present
@@ -179,7 +182,7 @@ export default function OptInPage() {
                       {
                         sessionId,
                         clientId,
-                        environment: (env.KNOT_ENVIRONMENT as 'development' | 'production') || 'development',
+                        environment: (process.env.NEXT_PUBLIC_KNOT_ENVIRONMENT as 'development' | 'production') || envFromApi || 'development',
                         product: 'transaction_link',
                         merchantIds: [refreshMerchantId],
                         entryPoint: 'opt-in',

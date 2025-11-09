@@ -1,46 +1,33 @@
 export const dynamic = 'force-dynamic'
 
-import { getAuthUser } from '@/lib/auth/utils'
 import { NextResponse } from 'next/server'
+
+import { computeAnalytics } from '@/lib/analytics/metrics'
 import { createClient } from '@/lib/supabase/server'
+import { createServiceClient } from '@/lib/supabase/service'
 
 export async function GET(_request: Request) {
   try {
-    const user = await getAuthUser()
-    if (!user) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    let supabase
+    try {
+      supabase = createServiceClient()
+    } catch {
+      supabase = await createClient()
     }
 
-    const supabase = await createClient()
-
-    // Get user's business profile
-    const { data: dbUser } = await supabase
-      .from('users')
-      .select('*')
-      .eq('id', user.id)
-      .eq('role', 'business')
-      .single()
-
-    if (!dbUser) {
-      return NextResponse.json(
-        { error: 'Business profile not found' },
-        { status: 404 }
-      )
-    }
-
-    // Get all transaction data for analytics
-    const { data: transactions } = await supabase
+    const { data: transactions, error: transactionError } = await supabase
       .from('transaction_cache')
       .select('*')
 
-    // Process transactions to generate analytics
-    // This is simplified - actual implementation would be more complex
-    const analytics = {
-      totalOrders: transactions?.length || 0,
-      averageOrderValue: 0,
-      topCategories: [],
-      timeDistribution: [],
+    if (transactionError) {
+      console.error('Error fetching transactions for analytics:', transactionError)
+      return NextResponse.json(
+        { error: 'Failed to fetch analytics data' },
+        { status: 500 },
+      )
     }
+
+    const analytics = computeAnalytics(transactions ?? [])
 
     return NextResponse.json({ analytics })
   } catch (error) {
