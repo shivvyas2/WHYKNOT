@@ -252,7 +252,7 @@ export function MapContainer({ center, category, onAreaClick }: MapContainerProp
       }
     }
   }
-
+//clean restuarant names before displaying with leaflet
   function escapeHtml(str: string) {
     return str.replace(/[&<>"']/g, (s) => ({
       '&': '&amp;',
