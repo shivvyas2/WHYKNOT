@@ -50,7 +50,11 @@ export default function OptInPage() {
 
       if (!sessionResponse.ok) {
         const errorData = await sessionResponse.json()
-        throw new Error(errorData.error || 'Failed to create session')
+        // Include more details in the error message
+        const errorMessage = errorData.message || errorData.error || 'Failed to create session'
+        const errorDetails = errorData.details ? ` Details: ${JSON.stringify(errorData.details)}` : ''
+        const errorHint = errorData.hint ? ` Hint: ${errorData.hint}` : ''
+        throw new Error(`${errorMessage}${errorDetails}${errorHint}`)
       }
 
       const sessionData = await sessionResponse.json()

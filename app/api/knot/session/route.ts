@@ -181,6 +181,8 @@ export async function POST(request: Request) {
       environment,
       externalUserId: dbUser.id,
       merchantIds,
+      endpoint: `${baseUrl}/session/create`,
+      clientIdPreview: knotClientId ? `${knotClientId.substring(0, 8)}...` : 'missing',
     })
 
     // Call Knot's Create Session API
