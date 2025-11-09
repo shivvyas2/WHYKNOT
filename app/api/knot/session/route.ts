@@ -177,8 +177,10 @@ export async function POST(request: Request) {
       : 'https://development.knotapi.com'
     
     // Knot API endpoint: POST /session/create
-    // Same endpoint for both production and development
-    const endpointPath = '/session/create'
+    // Try with /api prefix as many APIs require it
+    const endpointPath = environment === 'production'
+      ? '/api/session/create'  // Production might need /api prefix
+      : '/session/create'       // Development uses direct path
 
     console.log('Calling Knot API:', {
       baseUrl,
