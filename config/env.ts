@@ -14,6 +14,9 @@ const envSchema = z.object({
 
   // App
   NEXT_PUBLIC_APP_URL: z.string().url().default('http://localhost:3000'),
+  
+  // Restaurant Stats Backend API
+  RESTAURANT_STATS_API_URL: z.string().url().default('http://localhost:8000'),
 })
 
 export type Env = z.infer<typeof envSchema>
@@ -46,6 +49,7 @@ function getEnv(): Env {
     return {
       KNOT_ENVIRONMENT: 'development',
       NEXT_PUBLIC_APP_URL: 'http://localhost:3000',
+      RESTAURANT_STATS_API_URL: 'http://localhost:8000',
     } as Env
   }
 }

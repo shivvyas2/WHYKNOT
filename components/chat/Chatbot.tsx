@@ -45,7 +45,7 @@ export default function Chatbot() {
     <div className="max-w-2xl w-full mx-auto h-[640px] flex flex-col border rounded-lg bg-white shadow">
       <div className="p-4 border-b flex items-center justify-between">
         <h3 className="text-lg font-medium">Sous-AI Chat</h3>
-        <div className="text-sm text-gray-500">Mock assistant</div>
+        <div className="text-sm text-gray-500">AI Assistant</div>
       </div>
       <div ref={listRef} className="flex-1 overflow-auto p-4 space-y-3">
         {messages.length === 0 && (
