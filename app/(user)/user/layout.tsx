@@ -1,8 +1,40 @@
+import Link from 'next/link'
 import { getAuthUser } from '@/lib/auth/utils'
 import { redirect } from 'next/navigation'
 
 // MOCK MODE: Set to true to bypass authentication
 const MOCK_MODE = true
+
+function UserHeader() {
+  return (
+    <nav className="sticky top-0 z-20 flex w-full justify-center px-4 pt-6">
+      <div className="flex w-full max-w-5xl items-center justify-between px-6 py-3 sm:px-8">
+        <Link href="/" className="flex items-center gap-2 text-2xl font-semibold tracking-wide text-[#111a2c]">
+          <span>Wh</span>
+          <span className="flex h-9 w-9 items-center justify-center overflow-hidden rounded-lg">
+            <img src="/assets/yc.png" alt="Y Combinator" className="h-8 w-8 object-contain" />
+          </span>
+          <span className="flex h-9 w-9 items-center justify-center overflow-hidden rounded-lg">
+            <img src="/assets/knot.jpg" alt="Knot" className="h-8 w-8 object-cover" />
+          </span>
+          <span>not</span>
+        </Link>
+
+        <div className="flex items-center gap-3 text-sm font-medium">
+          <a href="/user" className="rounded-xl px-4 py-2 text-[#111a2c] transition hover:bg-[#4c6ef5]/10">
+            Coupons
+          </a>
+          <a href="/user/opt-in" className="rounded-xl px-4 py-2 text-[#111a2c] transition hover:bg-[#4c6ef5]/10">
+            Share Data
+          </a>
+          <a href="/user/rewards" className="rounded-xl px-4 py-2 text-[#111a2c] transition hover:bg-[#4c6ef5]/10">
+            My Rewards
+          </a>
+        </div>
+      </div>
+    </nav>
+  )
+}
 
 export default async function UserLayout({
   children,
@@ -12,37 +44,9 @@ export default async function UserLayout({
   // MOCK MODE: Skip authentication checks
   if (MOCK_MODE) {
     return (
-      <div className="min-h-screen bg-gray-50">
-        <nav className="bg-white shadow-sm border-b">
-          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-            <div className="flex justify-between h-16">
-              <div className="flex items-center">
-                <h1 className="text-xl font-bold">WhyKnot User (MOCK MODE)</h1>
-              </div>
-              <div className="flex items-center space-x-4">
-                <a
-                  href="/user"
-                  className="text-gray-700 hover:text-gray-900 px-3 py-2 rounded-md text-sm font-medium"
-                >
-                  Coupons
-                </a>
-                <a
-                  href="/user/opt-in"
-                  className="text-gray-700 hover:text-gray-900 px-3 py-2 rounded-md text-sm font-medium"
-                >
-                  Share Data
-                </a>
-                <a
-                  href="/user/rewards"
-                  className="text-gray-700 hover:text-gray-900 px-3 py-2 rounded-md text-sm font-medium"
-                >
-                  My Rewards
-                </a>
-              </div>
-            </div>
-          </div>
-        </nav>
-        <main>{children}</main>
+      <div className="min-h-screen w-full bg-white">
+        <UserHeader />
+        <main className="flex-1">{children}</main>
       </div>
     )
   }
@@ -54,37 +58,9 @@ export default async function UserLayout({
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      <nav className="bg-white shadow-sm border-b">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex justify-between h-16">
-            <div className="flex items-center">
-              <h1 className="text-xl font-bold">WhyKnot User</h1>
-            </div>
-            <div className="flex items-center space-x-4">
-              <a
-                href="/user"
-                className="text-gray-700 hover:text-gray-900 px-3 py-2 rounded-md text-sm font-medium"
-              >
-                Coupons
-              </a>
-              <a
-                href="/user/opt-in"
-                className="text-gray-700 hover:text-gray-900 px-3 py-2 rounded-md text-sm font-medium"
-              >
-                Share Data
-              </a>
-              <a
-                href="/user/rewards"
-                className="text-gray-700 hover:text-gray-900 px-3 py-2 rounded-md text-sm font-medium"
-              >
-                My Rewards
-              </a>
-            </div>
-          </div>
-        </div>
-      </nav>
-      <main>{children}</main>
+    <div className="min-h-screen w-full bg-white">
+      <UserHeader />
+      <main className="flex-1">{children}</main>
     </div>
   )
 }
