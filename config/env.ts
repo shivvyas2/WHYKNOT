@@ -17,6 +17,14 @@ const envSchema = z.object({
   
   // Restaurant Stats Backend API
   RESTAURANT_STATS_API_URL: z.string().url().default('http://localhost:8000'),
+  
+  // MongoDB
+  MONGO_URI: z.string().optional(),
+  
+  // AI/ML APIs
+  NOVA_ACT_API_KEY: z.string().optional(),
+  DEDALUS_LABS_KEY: z.string().optional(),
+  CLAUDE_API_KEY: z.string().optional(),
 })
 
 export type Env = z.infer<typeof envSchema>
