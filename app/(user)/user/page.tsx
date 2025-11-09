@@ -35,6 +35,67 @@ export default function UserDashboard() {
   // Get current month name
   const currentMonth = new Date().toLocaleString('default', { month: 'long', year: 'numeric' })
 
+  // Dummy coupons data
+  const dummyCoupons = [
+    {
+      id: 'dummy-1',
+      title: '20% Off Your Next Order',
+      description: 'Get 20% off on orders over $25. Valid for delivery and pickup. Perfect for your favorite meals!',
+      merchant: 'Uber Eats',
+      discount_percentage: 20,
+      discount_amount: null,
+      promo_code: 'SAVE20NOW',
+    },
+    {
+      id: 'dummy-2',
+      description: 'Save $5 on your next order of $30 or more. Use this coupon at checkout for instant savings.',
+      merchant: 'DoorDash',
+      discount_percentage: null,
+      discount_amount: 5,
+      promo_code: 'DOORDASH5',
+      title: '$5 Off Your Order',
+    },
+    {
+      id: 'dummy-3',
+      title: '15% Off Italian Cuisine',
+      description: 'Enjoy 15% off on Italian restaurants. Valid for all Italian cuisine orders. Buon appetito!',
+      merchant: 'Grubhub',
+      discount_percentage: 15,
+      discount_amount: null,
+      promo_code: 'ITALIAN15',
+    },
+    {
+      id: 'dummy-4',
+      title: 'Free Delivery',
+      description: 'Get free delivery on orders over $15. No delivery fees, just great food delivered to your door.',
+      merchant: 'Postmates',
+      discount_percentage: null,
+      discount_amount: null,
+      promo_code: 'FREEDEL',
+    },
+    {
+      id: 'dummy-5',
+      title: '30% Off First Order',
+      description: 'New customer special! Get 30% off your first order. Try new restaurants and save big.',
+      merchant: 'Caviar',
+      discount_percentage: 30,
+      discount_amount: null,
+      promo_code: 'FIRST30',
+    },
+    {
+      id: 'dummy-6',
+      title: '$10 Off $40+ Order',
+      description: 'Save $10 when you order $40 or more. Perfect for family meals or group orders.',
+      merchant: 'Seamless',
+      discount_percentage: null,
+      discount_amount: 10,
+      promo_code: 'SAVE10',
+    },
+  ]
+
+  // Use dummy coupons if no deals are available
+  const displayCoupons = deals.length > 0 ? deals : dummyCoupons
+
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
       <div className="mb-6">
@@ -47,41 +108,23 @@ export default function UserDashboard() {
           <div className="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
           <p className="mt-4 text-gray-600">Loading your coupons...</p>
         </div>
-      ) : deals.length === 0 ? (
-        <div className="bg-white p-8 rounded-lg shadow text-center">
-          <div className="max-w-md mx-auto">
-            <svg
-              className="mx-auto h-12 w-12 text-gray-400 mb-4"
-              fill="none"
-              viewBox="0 0 24 24"
-              stroke="currentColor"
-            >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={2}
-                d="M12 8v13m0-13V6a2 2 0 112 2h-2zm0 0V5.5A2.5 2.5 0 109.5 8H12zm-7 4h14M5 12a2 2 0 110-4h14a2 2 0 110 4H5z"
-              />
-            </svg>
-            <h2 className="text-xl font-semibold mb-2">No Coupons Yet</h2>
-            <p className="text-gray-600 mb-6">
-              Start sharing your transaction data to receive personalized coupons and deals!
-            </p>
-            <a
-              href="/user/opt-in"
-              className="inline-block bg-blue-600 text-white px-6 py-3 rounded-lg font-medium hover:bg-blue-700 transition-colors"
-            >
-              Get Started →
-            </a>
-          </div>
-        </div>
       ) : (
         <div>
+          {deals.length === 0 && (
+            <div className="mb-6 bg-gradient-to-r from-orange-50 to-yellow-50 border border-orange-200 rounded-xl p-4">
+              <p className="text-sm text-gray-700">
+                <span className="font-semibold">Demo Mode:</span> Showing sample coupons. 
+                <a href="/user/opt-in" className="text-[#FF6B35] hover:underline font-medium ml-1">
+                  Share your data to get personalized coupons →
+                </a>
+              </p>
+            </div>
+          )}
           <div className="mb-4 text-sm text-gray-600">
-            {deals.length} {deals.length === 1 ? 'coupon' : 'coupons'} available this month
+            {displayCoupons.length} {displayCoupons.length === 1 ? 'coupon' : 'coupons'} available this month
           </div>
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {(deals as Array<{ id: string; title: string; description: string; merchant: string; discount_percentage: number | null; discount_amount: number | null; promo_code?: string }>).map((deal) => (
+            {(displayCoupons as Array<{ id: string; title: string; description: string; merchant: string; discount_percentage: number | null; discount_amount: number | null; promo_code?: string }>).map((deal) => (
               <div
                 key={deal.id}
                 className="bg-gradient-to-br from-blue-50 to-purple-50 p-6 rounded-lg shadow-lg border-2 border-blue-200 hover:border-blue-400 transition-all"

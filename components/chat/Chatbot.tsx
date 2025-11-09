@@ -81,7 +81,7 @@ export default function Chatbot() {
             </div>
             <h4 className="text-lg font-semibold text-gray-900 mb-2">Start a conversation</h4>
             <p className="text-sm text-gray-500 max-w-md">
-              Ask me about restaurants, categories, analytics, or anything else you'd like to know!
+              Ask me about restaurants, categories, analytics, or anything else you&apos;d like to know!
             </p>
           </div>
         )}
