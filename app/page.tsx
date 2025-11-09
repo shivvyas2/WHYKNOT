@@ -8,12 +8,9 @@ export default function Home() {
 
       <div className="relative z-10 flex w-full max-w-5xl flex-col items-center gap-16">
         <header className="flex w-full items-center justify-between text-[#111a2c]">
-          <div className="flex items-center gap-2 text-3xl font-semibold tracking-wide">
+          <div className="flex items-center text-3xl font-semibold tracking-wide">
             <span>Wh</span>
-            <span className="flex h-10 w-10 items-center justify-center overflow-hidden rounded-lg bg-[#ffb347]">
-              <img src="/assets/yc.png" alt="Y Combinator" className="h-8 w-8 object-contain" />
-            </span>
-            <span className="flex h-10 w-10 items-center justify-center overflow-hidden rounded-lg bg-[#1f2937]">
+              <img src="/assets/yc.png" alt="Y Combinator" className="h-9 w-9 object-contain" />            <span className="flex h-10 w-10 items-center justify-center overflow-hidden rounded-lg bg-[#1f2937]">
               <img src="/assets/knot.jpg" alt="Knot" className="h-8 w-8 object-cover" />
             </span>
             <span>not</span>
