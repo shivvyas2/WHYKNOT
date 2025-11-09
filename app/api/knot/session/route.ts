@@ -213,11 +213,23 @@ export async function POST(request: Request) {
     }
 
     if (!knotResponse.ok) {
+      // Read response as text first, then try to parse as JSON
+      // This avoids "Body has already been read" error
       let errorData
       try {
-        errorData = await knotResponse.json()
-      } catch {
-        errorData = { message: await knotResponse.text() }
+        const textData = await knotResponse.text()
+        // Try to parse as JSON, but if it fails, use the text as the message
+        try {
+          errorData = JSON.parse(textData)
+        } catch {
+          errorData = { message: textData }
+        }
+      } catch (textError) {
+        errorData = { 
+          message: `Failed to read error response: ${textError instanceof Error ? textError.message : 'Unknown error'}`,
+          status: knotResponse.status,
+          statusText: knotResponse.statusText,
+        }
       }
       console.error('Knot session creation error:', {
         status: knotResponse.status,
