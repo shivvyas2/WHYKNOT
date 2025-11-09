@@ -6,8 +6,8 @@ import 'leaflet/dist/leaflet.css'
 import 'leaflet.heat'
 import type { HeatLayerOptions } from 'leaflet.heat'
 
-import { AREA_RADIUS_METERS, computeAreaMetrics, convertMockInsightsToMetrics } from '@/lib/analytics/area'
-import type { AreaMetrics, AreaSelection } from '@/lib/analytics/area'
+import { computeAreaMetrics, convertMockInsightsToMetrics } from '@/lib/analytics/area'
+import type { AreaSelection } from '@/lib/analytics/area'
 import { type ParsedOrder, type StoreSummary, aggregateStores, clamp, parseOrders } from '@/lib/analytics/orders'
 import { generateHeatmapData, getAreaInsights } from '@/utils/mockData'
 
