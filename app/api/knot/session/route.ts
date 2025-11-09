@@ -122,6 +122,8 @@ export async function POST(request: Request) {
 
     // Create a Knot session via their API
     // This requires calling Knot's Create Session endpoint
+    // Access env variables - these should be available from config/env.ts
+    // If env.ts failed to load, fallback to direct process.env access
     let knotClientId: string | undefined
     let knotApiSecret: string | undefined
     
@@ -129,15 +131,10 @@ export async function POST(request: Request) {
       knotClientId = env.NEXT_PUBLIC_KNOT_CLIENT_ID
       knotApiSecret = env.KNOT_API_SECRET
     } catch (error) {
-      console.error('Error accessing env variables:', error)
-      return NextResponse.json(
-        { 
-          error: 'Failed to access environment variables', 
-          message: error instanceof Error ? error.message : 'Unknown error',
-          details: process.env.NODE_ENV === 'development' ? String(error) : undefined,
-        },
-        { status: 500 }
-      )
+      console.error('Error accessing env variables from config, falling back to process.env:', error)
+      // Fallback to direct process.env access if env object failed
+      knotClientId = process.env.NEXT_PUBLIC_KNOT_CLIENT_ID
+      knotApiSecret = process.env.KNOT_API_SECRET
     }
 
     console.log('Knot credentials check:', {
@@ -278,17 +275,29 @@ export async function POST(request: Request) {
     const errorStack = error instanceof Error ? error.stack : undefined
     const errorName = error instanceof Error ? error.name : 'Error'
     
-    // In development, return detailed error information
-    const isDevelopment = process.env.NODE_ENV === 'development'
+    // Log full error details for debugging in production
+    console.error('Full error details:', {
+      name: errorName,
+      message: errorMessage,
+      stack: errorStack,
+      error: String(error),
+    })
     
+    // In production, still return error message (but not stack trace)
+    // This helps with debugging without exposing sensitive info
     return NextResponse.json(
       { 
         error: 'Internal server error',
         message: errorMessage,
-        name: errorName,
-        ...(isDevelopment && { 
+        // Include error type to help identify the issue
+        errorType: errorName,
+        // In production, include a hint about what might be wrong
+        ...(process.env.NODE_ENV === 'production' && {
+          hint: 'Check Vercel logs for full error details. Common issues: missing env vars, invalid credentials, or API connection failure.',
+        }),
+        // In development, include full stack trace
+        ...(process.env.NODE_ENV === 'development' && { 
           stack: errorStack,
-          // Include full error object in development
           details: error instanceof Error ? {
             name: error.name,
             message: error.message,
