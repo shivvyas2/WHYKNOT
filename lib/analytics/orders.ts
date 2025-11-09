@@ -133,7 +133,7 @@ export function haversineDistanceMeters(a: { lat: number; lng: number }, b: { la
   return R * d
 }
 
-function isRecord(value: Json | undefined): value is Record<string, unknown> {
+function isRecord(value: Json | undefined): value is { [key: string]: Json | undefined } {
   return Boolean(value) && typeof value === 'object' && !Array.isArray(value)
 }
 
