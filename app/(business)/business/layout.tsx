@@ -34,6 +34,9 @@ function BusinessHeader() {
           <a href="/business/analytics" className="rounded-xl px-4 py-2 text-[#111a2c] transition hover:bg-[#4c6ef5]/10">
             Analytics
           </a>
+          <a href="/chat" className="rounded-xl px-4 py-2 text-[#111a2c] transition hover:bg-[#4c6ef5]/10">
+            Sous AI
+          </a>
         </div>
       </div>
     </nav>
