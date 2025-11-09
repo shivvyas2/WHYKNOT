@@ -214,9 +214,18 @@ export async function POST(request: Request) {
     })
     
     // Call Knot's Create Session API endpoint: POST /session/create
+    const fullUrl = `${baseUrl}${endpointPath}`
+    console.log('Making request to:', {
+      url: fullUrl,
+      method: 'POST',
+      hasAuth: !!authHeader,
+      authType: authHeader.startsWith('Basic') ? 'Basic' : 'Bearer',
+      bodyKeys: Object.keys(requestBody),
+    })
+    
     let knotResponse
     try {
-      knotResponse = await fetch(`${baseUrl}${endpointPath}`, {
+      knotResponse = await fetch(fullUrl, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
