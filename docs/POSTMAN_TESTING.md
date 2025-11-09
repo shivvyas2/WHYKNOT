@@ -28,7 +28,19 @@ Content-Type: application/json
 
 ### 2. Test Knot's Production API Directly
 
-**Endpoint:** `POST https://knotapi.com/session/create`
+**⚠️ IMPORTANT:** If you get 405 errors, try these endpoint variations:
+
+**Option 1 (Standard):**
+- Endpoint: `POST https://knotapi.com/session/create`
+
+**Option 2 (With /api prefix):**
+- Endpoint: `POST https://knotapi.com/api/session/create`
+
+**Option 3 (Versioned):**
+- Endpoint: `POST https://knotapi.com/v1/session/create`
+
+**Option 4 (RESTful):**
+- Endpoint: `POST https://knotapi.com/sessions`
 
 **Headers:**
 ```
@@ -171,9 +183,17 @@ Authorization: Basic <base64_encoded_credentials>
 ## Troubleshooting
 
 1. **Getting 405 errors?**
-   - Make sure you're using `POST` method
-   - For production, remove `merchant_ids` from body
-   - Try the endpoint without `/api` prefix: `/session/create`
+   - **This means the endpoint doesn't accept POST or doesn't exist**
+   - Try different endpoint variations (see above)
+   - Verify with Knot support that:
+     - Your production credentials have access to session creation
+     - The endpoint path is correct for production
+     - The endpoint is enabled for your account
+   - **Possible causes:**
+     - Endpoint path is wrong (try variations above)
+     - Your credentials don't have access to this endpoint
+     - The endpoint requires different authentication
+     - The endpoint might be disabled for your account
 
 2. **Getting 401 errors?**
    - Double-check your credentials
@@ -204,7 +224,30 @@ Authorization: Basic <base64_encoded_credentials>
 - Client ID: `a390e79d-2920-4440-9ba1-b747bc92790b`
 - Secret: `be1e86abb4fc42a3b904b2f52215847e`
 - Base URL: `https://knotapi.com`
-- Endpoint: `/session/create`
+- Endpoint: `/session/create` (but getting 405 - may need different path)
+
+## ⚠️ 405 Error Diagnosis
+
+If you're getting 405 "Method not allowed" with "FUNCTION_INVOCATION_FAILED", this suggests:
+
+1. **The endpoint might not exist at that path** - Try the variations listed above
+2. **Your credentials might not have access** - Contact Knot support to verify:
+   - Your production Client ID has access to session creation
+   - The endpoint is enabled for your account
+   - You're using the correct base URL
+3. **The endpoint might require different setup** - Some APIs require:
+   - Account activation
+   - Feature flags to be enabled
+   - Different authentication method
+   - Webhook configuration first
+
+**Next Steps:**
+1. Try all endpoint variations in Postman
+2. Contact Knot API support with:
+   - Your Client ID: `a390e79d-2920-4440-9ba1-b747bc92790b`
+   - The error: "405 Method not allowed - FUNCTION_INVOCATION_FAILED"
+   - Ask: What is the correct endpoint path for session creation in production?
+   - Ask: Do my credentials have access to the session creation endpoint?
 
 **Development:**
 - Client ID: `dda0778d-9486-47f8-bd80-6f2512f9bcdb` (from docs)
