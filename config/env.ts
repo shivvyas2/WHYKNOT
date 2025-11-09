@@ -20,10 +20,15 @@ export type Env = z.infer<typeof envSchema>
 
 function getEnv(): Env {
   // Preprocess environment variables to trim whitespace/newlines
+  // Vercel environment variables sometimes have trailing newlines
   const processedEnv = { ...process.env }
-  if (processedEnv.KNOT_ENVIRONMENT) {
-    processedEnv.KNOT_ENVIRONMENT = processedEnv.KNOT_ENVIRONMENT.trim()
-  }
+  
+  // Trim all string environment variables to remove newlines/whitespace
+  Object.keys(processedEnv).forEach((key) => {
+    if (typeof processedEnv[key] === 'string') {
+      processedEnv[key] = processedEnv[key].trim()
+    }
+  })
   
   // Always use partial parsing to allow missing optional env vars
   // This prevents module load failures in production

@@ -35,6 +35,11 @@ export async function GET() {
     if (!env.KNOT_ENVIRONMENT && !process.env.KNOT_ENVIRONMENT) {
       envCheck.issues.push('KNOT_ENVIRONMENT is not set (will default to development)')
     }
+    
+    // Check for newline issues in process.env (common Vercel issue)
+    if (process.env.KNOT_ENVIRONMENT && process.env.KNOT_ENVIRONMENT.includes('\n')) {
+      envCheck.issues.push('WARNING: KNOT_ENVIRONMENT has newline character in process.env (will be trimmed automatically)')
+    }
 
     return NextResponse.json({
       ...envCheck,
