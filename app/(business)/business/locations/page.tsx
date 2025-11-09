@@ -1,6 +1,6 @@
 'use client'
 
-import { useCallback, useEffect, useState } from 'react'
+import { Suspense, useCallback, useEffect, useState } from 'react'
 import dynamic from 'next/dynamic'
 import { useRouter, useSearchParams, usePathname } from 'next/navigation'
 
@@ -14,11 +14,14 @@ import { Button } from '@/components/ui/button'
 import { ArrowLeft } from 'lucide-react'
 
 // Dynamically import MapContainer to prevent SSR
-const MapContainer = dynamic(() => import('@/components/business/MapContainer').then(mod => ({ default: mod.MapContainer })), {
-  ssr: false,
-})
+const MapContainer = dynamic(
+  () => import('@/components/business/MapContainer').then((mod) => ({ default: mod.MapContainer })),
+  {
+    ssr: false,
+  },
+)
 
-export default function LocationsPage() {
+function LocationsPageInner() {
   const router = useRouter()
   const searchParams = useSearchParams()
   const pathname = usePathname()
@@ -137,6 +140,20 @@ export default function LocationsPage() {
         />
       )}
     </div>
+  )
+}
+
+export default function LocationsPage() {
+  return (
+    <Suspense
+      fallback={
+        <div className="flex h-screen w-screen items-center justify-center bg-slate-950/5 text-sm font-medium text-slate-500">
+          Loading neighborhood intelligence…
+        </div>
+      }
+    >
+      <LocationsPageInner />
+    </Suspense>
   )
 }
 
