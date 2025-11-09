@@ -7,6 +7,8 @@ import { createClient } from '@/lib/supabase/server'
 // MOCK MODE: Set to true to bypass authentication
 const MOCK_MODE = true
 
+export const runtime = 'nodejs'
+
 function BusinessHeader() {
   return (
     <nav data-business-header className="sticky top-0 z-20 flex w-full justify-center px-4 pt-6">
