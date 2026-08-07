@@ -1,118 +1,129 @@
 # WhyKnot
 
-WhyKnot is a Next.js application that connects restaurant owners with location insights through transaction data. The platform allows users to opt-in to share their transaction data from services like DoorDash and Uber Eats in exchange for rewards and exclusive deals.
+Restaurants pick new locations on instinct and a rented demographics report. The
+data that would actually answer *"where are people already ordering food we don't
+sell yet?"* sits inside consumers' merchant accounts — and it's theirs to give.
 
-## Features
+WhyKnot is a two-sided app built on [Knot](https://knotapi.com)'s Transaction Link.
+Diners connect DoorDash and Uber Eats, get paid for it, and restaurant owners see
+aggregate demand on a map instead of guessing.
 
-### Business Side (`/business`)
-- Location scouting based on transaction data
-- Analytics dashboard
-- Insights into customer ordering patterns
+## Demo
 
-### User Side (`/user`)
-- Opt-in to share transaction data from DoorDash and Uber Eats
-- Receive $20 promo code upon opt-in
-- Get exclusive deals based on transaction history
-- View rewards and manage data sharing preferences
+**Live:** https://whyknot.vercel.app
 
-## Tech Stack
+<!-- DEMO VIDEO: replace the line below with the uploaded walkthrough -->
+_Walkthrough video: coming — records the connect → sync → heatmap flow end to end._
 
-- **Framework**: Next.js 14+ (App Router)
-- **Language**: TypeScript
-- **Authentication**: Supabase Auth
-- **Database**: Supabase (PostgreSQL)
-- **Styling**: Tailwind CSS
-- **Deployment**: Vercel
-- **CI/CD**: GitHub Actions
+The hosted demo runs without Supabase, so it uses a demo identity and skips
+sign-in. Everything that talks to Knot is real — see [Known gaps](#known-gaps) for
+what isn't.
 
-## Getting Started
+## How it works
 
-### Prerequisites
+**Consumer side** (`/user`) — connect a merchant account through Knot Link, see
+transactions come back, collect a reward for opting in.
 
-- Node.js 20+
-- npm or yarn
-- Supabase account (for database and authentication)
-- Knot API credentials (when available)
+**Business side** (`/business`) — a demand heatmap over aggregated order data, with
+location scouting and per-area analytics.
 
-### Installation
+The pitch is the exchange: the consumer gets $20 and better deals, the operator
+gets ground truth, and the transaction data never has to be scraped or bought.
 
-1. Clone the repository:
+## Knot integration
+
+Everything Knot-facing goes through `lib/knot/`:
+
+| Path | What it does |
+|---|---|
+| `lib/knot/sdk.ts` | Client-side Knot Link (`knotapi-js`), `transaction_link` product, lazily imported so it never touches SSR |
+| `lib/knot/server.ts` | Server-side API client — Basic auth, environment-aware base URL, typed errors |
+| `app/api/knot/session/route.ts` | `POST /session/create` — mints the session Link opens with |
+| `app/api/knot/transactions/sync/route.ts` | `POST /transactions/sync` — pulls a single merchant, caches to Supabase |
+| `app/api/knot/transactions/route.ts` | Fans sync out across every merchant the user connected, since sync is per-merchant |
+| `app/api/knot/webhooks/route.ts` | Receives `transaction.created`, `transaction.updated`, `connection.updated` |
+
+Merchants are addressed by Knot's numeric ids (`lib/constants.ts`): DoorDash `19`,
+Uber Eats `36`.
+
+Two details worth calling out, because both cost real debugging time:
+
+- **`external_user_id` must be stable.** Knot pins sync cursors to it. An id
+  derived per-request restarts the sync every call and never paginates.
+- **`merchant_ids` is development-only** on `/session/create`; production rejects it.
+
+## Tech stack
+
+Next.js 14 (App Router) · TypeScript · Supabase (Postgres + Auth) · Tailwind ·
+Leaflet · Vercel
+
+## Running locally
+
 ```bash
-git clone <repository-url>
+git clone https://github.com/shivvyas2/WHYKNOT.git
 cd WHYKNOT
-```
-
-2. Install dependencies:
-```bash
 npm install
+cp .env.example .env.local   # fill in the values below
+npm run dev
 ```
 
-3. Set up environment variables:
-```bash
-cp .env.example .env.local
-```
-
-4. Fill in your environment variables in `.env.local`:
+### Environment
 
 ```env
-# Supabase (Database & Authentication)
-NEXT_PUBLIC_SUPABASE_URL=your_supabase_url
-NEXT_PUBLIC_SUPABASE_ANON_KEY=your_supabase_anon_key
-SUPABASE_SERVICE_ROLE_KEY=your_supabase_service_role_key
+# Supabase — omit entirely to run in demo mode
+NEXT_PUBLIC_SUPABASE_URL=
+NEXT_PUBLIC_SUPABASE_ANON_KEY=
+SUPABASE_SERVICE_ROLE_KEY=
 
-# Knot API (when available)
-NEXT_PUBLIC_KNOT_API_KEY=your_knot_api_key
-KNOT_API_SECRET=your_knot_api_secret
-KNOT_WEBHOOK_SECRET=your_knot_webhook_secret
+# Knot
+NEXT_PUBLIC_KNOT_CLIENT_ID=
+KNOT_API_SECRET=
+KNOT_WEBHOOK_SECRET=
+KNOT_ENVIRONMENT=development
 
-# App URLs
-NEXT_PUBLIC_APP_URL=http://localhost:3000
+# Optional: restaurant-stats backend powering the demand heatmap
+RESTAURANT_STATS_API_URL=http://localhost:8000
 ```
 
-5. Set up Supabase database:
+### Database
 
-Run the following SQL in your Supabase SQL editor to create the necessary tables:
-
--- Users table (uses Supabase Auth UUID as primary key)
+```sql
+-- Users (Supabase Auth uuid as primary key)
 CREATE TABLE users (
   id UUID PRIMARY KEY REFERENCES auth.users(id) ON DELETE CASCADE,
   email TEXT NOT NULL,
   role TEXT NOT NULL CHECK (role IN ('business', 'user')),
-  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
-  updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  updated_at TIMESTAMPTZ DEFAULT NOW()
 );
 
--- Business profiles table
 CREATE TABLE business_profiles (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   user_id UUID REFERENCES users(id) ON DELETE CASCADE,
   business_name TEXT NOT NULL,
-  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
-  updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  updated_at TIMESTAMPTZ DEFAULT NOW()
 );
 
--- User opt-ins table
 CREATE TABLE user_opt_ins (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   user_id UUID REFERENCES users(id) ON DELETE CASCADE,
   merchant TEXT NOT NULL,
   is_active BOOLEAN DEFAULT true,
   knot_connection_id TEXT,
-  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
-  updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  updated_at TIMESTAMPTZ DEFAULT NOW()
 );
 
--- Transaction cache table
 CREATE TABLE transaction_cache (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   user_id UUID REFERENCES users(id) ON DELETE CASCADE,
   merchant TEXT NOT NULL,
   transaction_data JSONB NOT NULL,
-  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
-  updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  updated_at TIMESTAMPTZ DEFAULT NOW()
 );
 
--- Rewards table
 CREATE TABLE rewards (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   user_id UUID REFERENCES users(id) ON DELETE CASCADE,
@@ -120,11 +131,10 @@ CREATE TABLE rewards (
   amount NUMERIC NOT NULL,
   currency TEXT NOT NULL DEFAULT 'USD',
   is_used BOOLEAN DEFAULT false,
-  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
-  updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  updated_at TIMESTAMPTZ DEFAULT NOW()
 );
 
--- Deals table
 CREATE TABLE deals (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   user_id UUID REFERENCES users(id) ON DELETE CASCADE,
@@ -134,81 +144,59 @@ CREATE TABLE deals (
   discount_percentage NUMERIC,
   discount_amount NUMERIC,
   is_active BOOLEAN DEFAULT true,
-  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
-  updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  updated_at TIMESTAMPTZ DEFAULT NOW()
 );
 
--- Create indexes
-CREATE INDEX idx_users_clerk_id ON users(clerk_id);
 CREATE INDEX idx_user_opt_ins_user_id ON user_opt_ins(user_id);
 CREATE INDEX idx_transaction_cache_user_id ON transaction_cache(user_id);
 CREATE INDEX idx_rewards_user_id ON rewards(user_id);
 CREATE INDEX idx_deals_user_id ON deals(user_id);
 ```
 
-6. Run the development server:
+## Layout
+
+```
+app/
+  (auth)/        sign-in, sign-up
+  (user)/        opt-in, transactions, rewards, deals
+  (business)/    map, locations, analytics
+  api/knot/      session, transactions, sync, webhooks
+  api/business/  orders, locations, analytics
+components/      business/, user/, shared/
+lib/
+  knot/          sdk (client) + server (API client)
+  analytics/     order parsing, store aggregation, area selection
+  auth/          request-user resolution
+  supabase/      browser + server clients
+```
+
+## Scripts
+
 ```bash
-npm run dev
+npm run dev         # dev server
+npm run build       # production build
+npm run lint        # eslint
+npm run type-check  # tsc --noEmit
 ```
 
-7. Open [http://localhost:3000](http://localhost:3000) in your browser.
+## Known gaps
 
-## Project Structure
+Built in about two days for a hackathon; these are the honest edges.
 
-```
-whyknot/
-├── app/                    # Next.js App Router pages
-│   ├── (business)/        # Business route group
-│   ├── (user)/            # User route group
-│   ├── (auth)/            # Auth pages
-│   └── api/               # API routes
-├── components/            # React components
-│   ├── business/          # Business-specific components
-│   ├── user/              # User-specific components
-│   └── shared/            # Shared components
-├── lib/                   # Utility libraries
-│   ├── knot/              # Knot SDK integration
-│   ├── supabase/          # Supabase client
-│   └── clerk/             # Clerk utilities
-├── hooks/                 # Custom React hooks
-├── types/                 # TypeScript type definitions
-└── config/                 # Configuration files
-```
-
-## Available Scripts
-
-- `npm run dev` - Start development server
-- `npm run build` - Build for production
-- `npm run start` - Start production server
-- `npm run lint` - Run ESLint
-- `npm run type-check` - Run TypeScript type checking
-
-## CI/CD
-
-The project includes a GitHub Actions workflow that runs on push and pull requests:
-- Type checking
-- Linting
-- Build verification
-
-## Knot SDK Integration
-
-The Knot SDK integration is currently set up with placeholder implementations. Once the Knot SDK documentation is available, update the following files:
-
-- `lib/knot/client.ts` - Knot SDK client wrapper
-- `lib/knot/types.ts` - Knot API types
-- `lib/knot/hooks.ts` - React hooks for Knot
-- `app/api/knot/` - Knot API routes
-
-## Deployment
-
-The application is configured for deployment on Vercel. Make sure to:
-
-1. Set all environment variables in Vercel dashboard
-2. Configure Clerk for production URLs
-3. Set up Supabase production database
-4. Configure Knot API credentials
+- **Webhook signatures aren't verified.** `app/api/knot/webhooks/route.ts` reads
+  `x-knot-signature` but doesn't validate it, so the endpoint trusts its caller.
+  Left unimplemented rather than guessed at — it needs Knot's actual signing
+  scheme, and a wrong HMAC is worse than an obvious gap.
+- **Demo mode bypasses auth.** With Supabase unconfigured the app serves a fixed
+  demo identity. It's opt-in or inferred from missing config — never entered
+  because a real auth check failed.
+- **The demand heatmap needs a separate backend.** `RESTAURANT_STATS_API_URL`
+  points at a service that isn't deployed with the demo, so the map renders empty
+  and says so.
+- **Reward issuance isn't wired.** The `rewards` schema and UI exist; nothing
+  writes to the table yet.
 
 ## License
 
-[Add your license here]
-
+MIT

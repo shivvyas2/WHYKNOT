@@ -1,87 +1,92 @@
 export const dynamic = 'force-dynamic'
 
-import { getAuthUser } from '@/lib/auth/utils'
 import { NextResponse } from 'next/server'
-import { createClient } from '@/lib/supabase/server'
-import { createKnotClient } from '@/lib/knot/client'
-import { env } from '@/config/env'
 
+import { resolveRequestUser } from '@/lib/auth/request-user'
+import { KNOT_MERCHANT_IDS } from '@/lib/constants'
+import { hasKnotCredentials, knotErrorResponse, syncTransactions } from '@/lib/knot/server'
+import { createClient } from '@/lib/supabase/server'
+
+const TRANSACTIONS_PER_MERCHANT = 20
+
+/**
+ * Returns the caller's transactions across every merchant they've connected.
+ *
+ * Knot has no "list all transactions" endpoint — Transaction Sync is per
+ * merchant — so this fans out over the user's active opt-ins and flattens.
+ */
 export async function GET(request: Request) {
   try {
-    const user = await getAuthUser()
+    const user = await resolveRequestUser()
     if (!user) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
+    if (!hasKnotCredentials()) {
+      // Nothing to sync against. Report it rather than 500-ing, so the page can
+      // render its empty state instead of an error.
+      return NextResponse.json({ transactions: [], reason: 'knot_not_configured' })
+    }
+
     const { searchParams } = new URL(request.url)
-    const merchant = searchParams.get('merchant')
-    const startDate = searchParams.get('startDate')
-    const endDate = searchParams.get('endDate')
+    const merchantFilter = searchParams.get('merchant')
 
-    const supabase = await createClient()
-
-    // Get user's opt-ins
-    const { data: dbUser } = await supabase
-      .from('users')
-      .select('*')
-      .eq('id', user.id)
-      .single()
-
-    if (!dbUser) {
-      return NextResponse.json({ error: 'User not found' }, { status: 404 })
-    }
-
-    const query = supabase
-      .from('user_opt_ins')
-      .select('*')
-      .eq('user_id', dbUser.id)
-      .eq('is_active', true)
-
-    if (merchant) {
-      query.eq('merchant', merchant)
-    }
-
-    const { data: optIns } = await query
-
-    if (!optIns || optIns.length === 0) {
+    const merchants = await connectedMerchants(user.id, user.isDemo, merchantFilter)
+    if (merchants.length === 0) {
       return NextResponse.json({ transactions: [] })
     }
 
-    // Fetch transactions from Knot API for each active connection
-    const knotClient = createKnotClient(
-      env.NEXT_PUBLIC_KNOT_CLIENT_ID || '',
-      env.KNOT_API_SECRET
-    )
-
-    const allTransactions: unknown[] = []
-
-    for (const optIn of optIns) {
-      if (optIn.knot_connection_id) {
+    const results = await Promise.all(
+      merchants.map(async (merchantId) => {
         try {
-          const transactions = await knotClient.getTransactions(
-            optIn.knot_connection_id,
-            startDate ? new Date(startDate) : undefined,
-            endDate ? new Date(endDate) : undefined
-          )
-          if (Array.isArray(transactions)) {
-            allTransactions.push(...transactions)
-          }
+          const data = await syncTransactions({
+            merchantId,
+            externalUserId: user.id,
+            limit: TRANSACTIONS_PER_MERCHANT,
+          })
+          return Array.isArray(data.transactions) ? data.transactions : []
         } catch (error) {
-          console.error(
-            `Error fetching transactions for ${optIn.merchant}:`,
-            error
-          )
+          // One unreachable merchant shouldn't blank the whole page.
+          console.error(`Transaction sync failed for merchant ${merchantId}:`, error)
+          return []
         }
-      }
-    }
-
-    return NextResponse.json({ transactions: allTransactions })
-  } catch (error) {
-    console.error('Error fetching transactions:', error)
-    return NextResponse.json(
-      { error: 'Internal server error' },
-      { status: 500 }
+      })
     )
+
+    return NextResponse.json({ transactions: results.flat() })
+  } catch (error) {
+    return knotErrorResponse(error, 'Error fetching transactions')
   }
 }
 
+/** Knot merchant ids the user has connected. */
+async function connectedMerchants(
+  userId: string,
+  isDemo: boolean,
+  merchantFilter: string | null
+): Promise<number[]> {
+  const toId = (slug: string) => KNOT_MERCHANT_IDS[slug]
+
+  if (isDemo) {
+    // No Supabase to read opt-ins from, so offer the merchants the demo supports.
+    const slugs = merchantFilter ? [merchantFilter] : Object.keys(KNOT_MERCHANT_IDS)
+    return slugs.map(toId).filter(Boolean)
+  }
+
+  const supabase = await createClient()
+  const query = supabase
+    .from('user_opt_ins')
+    .select('merchant')
+    .eq('user_id', userId)
+    .eq('is_active', true)
+
+  if (merchantFilter) query.eq('merchant', merchantFilter)
+
+  const { data, error } = await query
+  if (error) {
+    console.error('Failed to read opt-ins:', error)
+    return []
+  }
+
+  return (data ?? []).map((optIn) => toId(optIn.merchant)).filter(Boolean)
+}

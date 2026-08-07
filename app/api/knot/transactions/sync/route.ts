@@ -1,159 +1,48 @@
 export const dynamic = 'force-dynamic'
 
-import { getAuthUser } from '@/lib/auth/utils'
 import { NextResponse } from 'next/server'
+
+import { resolveRequestUser } from '@/lib/auth/request-user'
+import { knotErrorResponse, syncTransactions } from '@/lib/knot/server'
 import { createClient } from '@/lib/supabase/server'
-import { env } from '@/config/env'
 
 export async function POST(request: Request) {
   try {
-    // In mock mode, create a mock user
-    // Check both environment variable and if Supabase credentials are missing
-    const hasSupabaseConfig = !!(process.env.NEXT_PUBLIC_SUPABASE_URL && process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY)
-    const MOCK_MODE = process.env.MOCK_MODE === 'true' || process.env.NODE_ENV === 'development' || !hasSupabaseConfig
-    
-    let user
-    if (MOCK_MODE) {
-      user = {
-        id: 'mock-user-id-' + Date.now(),
-        email: 'mock@example.com',
-      }
-    } else {
-      try {
-        user = await getAuthUser()
-        if (!user) {
-          // Fall back to mock mode if no user found
-          console.warn('No authenticated user found, falling back to mock mode')
-          user = {
-            id: 'mock-user-id-' + Date.now(),
-            email: 'mock@example.com',
-          }
-        }
-      } catch (authError) {
-        // Fall back to mock mode if auth fails
-        console.error('Error getting authenticated user, falling back to mock mode:', authError)
-        user = {
-          id: 'mock-user-id-' + Date.now(),
-          email: 'mock@example.com',
-        }
-      }
+    const user = await resolveRequestUser()
+    if (!user) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
-    const body = await request.json()
-    const { merchant_id, cursor, limit = 5 } = body
-
-    if (!merchant_id) {
-      return NextResponse.json(
-        { error: 'merchant_id is required' },
-        { status: 400 }
-      )
+    const { merchant_id: merchantId, cursor, limit = 5 } = await request.json()
+    if (!merchantId) {
+      return NextResponse.json({ error: 'merchant_id is required' }, { status: 400 })
     }
 
-    let dbUser
-    if (MOCK_MODE) {
-      dbUser = {
-        id: user.id,
-        email: user.email || '',
-        role: 'user',
-      }
-    } else {
-      const supabase = await createClient()
-
-      // Get user from database
-      const { data: existingUser } = await supabase
-        .from('users')
-        .select('*')
-        .eq('id', user.id)
-        .single()
-
-      if (!existingUser) {
-        return NextResponse.json({ error: 'User not found' }, { status: 404 })
-      }
-      dbUser = existingUser
-    }
-
-    // Create Basic Auth header
-    const knotClientId = env.NEXT_PUBLIC_KNOT_CLIENT_ID
-    const knotApiSecret = env.KNOT_API_SECRET
-
-    if (!knotClientId || !knotApiSecret) {
-      return NextResponse.json(
-        { error: 'Knot API credentials not configured' },
-        { status: 500 }
-      )
-    }
-
-    const authString = Buffer.from(`${knotClientId}:${knotApiSecret}`).toString('base64')
-    const authHeader = `Basic ${authString}`
-
-    // Determine environment URL
-    const environment = env.KNOT_ENVIRONMENT || 'development'
-    const baseUrl = environment === 'production' 
-      ? 'https://production.knotapi.com'  // Correct production URL
-      : 'https://development.knotapi.com'  // Development URL
-
-    // Call Knot's Transaction Sync API
-    const syncResponse = await fetch(`${baseUrl}/transactions/sync`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': authHeader,
-      },
-      body: JSON.stringify({
-        merchant_id,
-        external_user_id: dbUser.id,
-        cursor: cursor || undefined,
-        limit: Math.min(Math.max(limit, 1), 100), // Clamp between 1 and 100
-      }),
+    const syncData = await syncTransactions({
+      merchantId,
+      externalUserId: user.id,
+      cursor,
+      limit,
     })
 
-    if (!syncResponse.ok) {
-      // Read response as text first, then try to parse as JSON
-      // This avoids "Body has already been read" error
-      let errorData
-      try {
-        const textData = await syncResponse.text()
-        // Try to parse as JSON, but if it fails, use the text as the message
-        try {
-          errorData = JSON.parse(textData)
-        } catch {
-          errorData = { message: textData }
-        }
-      } catch (textError) {
-        errorData = { 
-          message: `Failed to read error response: ${textError instanceof Error ? textError.message : 'Unknown error'}`,
-          status: syncResponse.status,
-          statusText: syncResponse.statusText,
-        }
-      }
-      console.error('Knot transaction sync error:', errorData)
-      return NextResponse.json(
-        { error: 'Failed to sync transactions', details: errorData },
-        { status: syncResponse.status }
-      )
-    }
-
-    const syncData = await syncResponse.json()
-
-    // Store transactions in cache if needed (skip in mock mode)
-    if (!MOCK_MODE && syncData.transactions && Array.isArray(syncData.transactions)) {
+    if (!user.isDemo && Array.isArray(syncData.transactions) && syncData.transactions.length) {
       const supabase = await createClient()
-      for (const transaction of syncData.transactions) {
-        await supabase.from('transaction_cache').upsert({
-          user_id: dbUser.id,
-          merchant: syncData.merchant?.name || merchant_id.toString(),
+      const merchant = syncData.merchant?.name ?? String(merchantId)
+
+      // One upsert for the page, not one per transaction.
+      const { error } = await supabase.from('transaction_cache').upsert(
+        syncData.transactions.map((transaction) => ({
+          user_id: user.id,
+          merchant,
           transaction_data: transaction,
-        })
-      }
+        }))
+      )
+
+      if (error) console.error('Failed to cache synced transactions:', error)
     }
 
     return NextResponse.json(syncData)
   } catch (error) {
-    console.error('Transaction sync error:', error)
-    return NextResponse.json(
-      { error: 'Internal server error' },
-      { status: 500 }
-    )
+    return knotErrorResponse(error, 'Transaction sync error')
   }
 }
-
