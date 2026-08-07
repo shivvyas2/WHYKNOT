@@ -13,9 +13,21 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
-    const { merchant_id: merchantId, cursor, limit = 5 } = await request.json()
+    let body: { merchant_id?: number | string; cursor?: string; limit?: number }
+    try {
+      body = await request.json()
+    } catch {
+      return NextResponse.json({ error: 'Invalid request body' }, { status: 400 })
+    }
+
+    const { merchant_id: merchantId, cursor } = body
     if (!merchantId) {
       return NextResponse.json({ error: 'merchant_id is required' }, { status: 400 })
+    }
+
+    const limit = Number(body.limit ?? 5)
+    if (!Number.isFinite(limit) || limit < 1) {
+      return NextResponse.json({ error: 'limit must be a positive number' }, { status: 400 })
     }
 
     const syncData = await syncTransactions({

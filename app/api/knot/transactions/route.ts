@@ -70,7 +70,7 @@ async function connectedMerchants(
   if (isDemo) {
     // No Supabase to read opt-ins from, so offer the merchants the demo supports.
     const slugs = merchantFilter ? [merchantFilter] : Object.keys(KNOT_MERCHANT_IDS)
-    return slugs.map(toId).filter(Boolean)
+    return slugs.map(toId).filter(isMerchantId)
   }
 
   const supabase = await createClient()
@@ -88,5 +88,9 @@ async function connectedMerchants(
     return []
   }
 
-  return (data ?? []).map((optIn) => toId(optIn.merchant)).filter(Boolean)
+  return (data ?? []).map((optIn) => toId(optIn.merchant)).filter(isMerchantId)
+}
+
+function isMerchantId(id: number | undefined): id is number {
+  return typeof id === 'number'
 }

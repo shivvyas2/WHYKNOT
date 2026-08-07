@@ -21,6 +21,10 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'Invalid request body' }, { status: 400 })
     }
 
+    if (merchantIds !== undefined && !Array.isArray(merchantIds)) {
+      return NextResponse.json({ error: 'merchantIds must be an array' }, { status: 400 })
+    }
+
     if (!user.isDemo) {
       await ensureUserRow(user.id, user.email)
     }
@@ -37,13 +41,18 @@ export async function POST(request: Request) {
   }
 }
 
-/** Knot pins sessions to external_user_id, so the row must exist before linking. */
+/**
+ * Knot pins sessions to external_user_id, so the row must exist before linking.
+ *
+ * `ignoreDuplicates` matters: a plain upsert would rewrite `role` on every
+ * session, silently demoting an existing business account to 'user'.
+ */
 async function ensureUserRow(id: string, email: string): Promise<void> {
   const supabase = await createClient()
 
   const { error } = await supabase
     .from('users')
-    .upsert({ id, email, role: 'user' }, { onConflict: 'id' })
+    .upsert({ id, email, role: 'user' }, { onConflict: 'id', ignoreDuplicates: true })
 
   if (error) {
     console.error('Failed to ensure user row:', error)

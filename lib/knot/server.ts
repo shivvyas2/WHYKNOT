@@ -7,6 +7,9 @@ const KNOT_BASE_URLS = {
   production: 'https://production.knotapi.com',
 } as const
 
+/** Serverless functions bill wall-clock time, so outbound calls need a deadline. */
+const KNOT_TIMEOUT_MS = 10_000
+
 /** Knot credentials are missing or malformed. */
 export class KnotConfigError extends Error {
   constructor(message = 'Knot API credentials are not configured') {
@@ -77,6 +80,7 @@ export async function createSession({
       Authorization: knotAuthHeader(),
     },
     body: JSON.stringify(body),
+    signal: AbortSignal.timeout(KNOT_TIMEOUT_MS),
   })
 
   if (!response.ok) {
@@ -133,6 +137,7 @@ export async function syncTransactions({
       cursor: cursor || undefined,
       limit: Math.min(Math.max(limit, 1), 100),
     }),
+    signal: AbortSignal.timeout(KNOT_TIMEOUT_MS),
   })
 
   if (!response.ok) {
@@ -152,7 +157,12 @@ export async function syncTransactions({
   return response.json()
 }
 
-/** Maps a thrown Knot error onto a response, keeping secrets out of the body. */
+/**
+ * Maps a thrown Knot error onto a response.
+ *
+ * Upstream bodies are logged, never returned — they can carry request echoes and
+ * internal identifiers, and this endpoint is reachable by the browser.
+ */
 export function knotErrorResponse(error: unknown, context: string): NextResponse {
   if (error instanceof KnotConfigError) {
     console.error(`${context}:`, error.message)
@@ -161,10 +171,14 @@ export function knotErrorResponse(error: unknown, context: string): NextResponse
 
   if (error instanceof KnotApiError) {
     console.error(`${context}:`, error.status, error.details)
-    return NextResponse.json(
-      { error: 'Failed to sync transactions', details: error.details },
-      { status: error.status }
-    )
+    // Collapse upstream 4xx to 502: a Knot rejection is our bug, not the caller's.
+    const status = error.status >= 500 || error.status < 400 ? 502 : error.status
+    return NextResponse.json({ error: 'Knot request failed' }, { status })
+  }
+
+  if (error instanceof DOMException && error.name === 'TimeoutError') {
+    console.error(`${context}: timed out`)
+    return NextResponse.json({ error: 'Knot request timed out' }, { status: 504 })
   }
 
   console.error(`${context}:`, error)
