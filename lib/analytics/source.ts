@@ -1,5 +1,7 @@
 import { env } from '@/config/env'
 
+const ORDER_DATA_TIMEOUT_MS = 8_000
+
 export interface OrderDataResult {
   /** Raw order rows, empty when the source is unreachable. */
   orders: unknown[]
@@ -20,7 +22,9 @@ export async function fetchOrderData(signal?: AbortSignal): Promise<OrderDataRes
   try {
     const response = await fetch(`${baseUrl}/api/mongo-data`, {
       cache: 'no-store',
-      signal,
+      // Without a deadline an unreachable backend holds the function open until
+      // the platform kills it.
+      signal: signal ?? AbortSignal.timeout(ORDER_DATA_TIMEOUT_MS),
     })
 
     if (!response.ok) {

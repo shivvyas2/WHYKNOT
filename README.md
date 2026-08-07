@@ -5,8 +5,8 @@ data that would actually answer *"where are people already ordering food we don'
 sell yet?"* sits inside consumers' merchant accounts — and it's theirs to give.
 
 WhyKnot is a two-sided app built on [Knot](https://knotapi.com)'s Transaction Link.
-Diners connect DoorDash and Uber Eats, get paid for it, and restaurant owners see
-aggregate demand on a map instead of guessing.
+Diners connect DoorDash and Uber Eats in exchange for rewards, and restaurant
+owners see aggregate demand on a map instead of guessing.
 
 ## Demo
 
@@ -21,14 +21,15 @@ what isn't.
 
 ## How it works
 
-**Consumer side** (`/user`) — connect a merchant account through Knot Link, see
-transactions come back, collect a reward for opting in.
+**Consumer side** (`/user`) — connect a merchant account through Knot Link and see
+transactions come back. The rewards and deals surfaces are built against the
+schema but issuance isn't wired yet (see [Known gaps](#known-gaps)).
 
 **Business side** (`/business`) — a demand heatmap over aggregated order data, with
 location scouting and per-area analytics.
 
-The pitch is the exchange: the consumer gets $20 and better deals, the operator
-gets ground truth, and the transaction data never has to be scraped or bought.
+The intended exchange: the consumer gets $20 and better deals, the operator gets
+ground truth, and the transaction data never has to be scraped or bought.
 
 ## Knot integration
 
@@ -99,7 +100,7 @@ CREATE TABLE users (
 
 CREATE TABLE business_profiles (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  user_id UUID REFERENCES users(id) ON DELETE CASCADE,
+  user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
   business_name TEXT NOT NULL,
   created_at TIMESTAMPTZ DEFAULT NOW(),
   updated_at TIMESTAMPTZ DEFAULT NOW()
@@ -107,7 +108,7 @@ CREATE TABLE business_profiles (
 
 CREATE TABLE user_opt_ins (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  user_id UUID REFERENCES users(id) ON DELETE CASCADE,
+  user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
   merchant TEXT NOT NULL,
   is_active BOOLEAN DEFAULT true,
   knot_connection_id TEXT,
@@ -117,7 +118,7 @@ CREATE TABLE user_opt_ins (
 
 CREATE TABLE transaction_cache (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  user_id UUID REFERENCES users(id) ON DELETE CASCADE,
+  user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
   merchant TEXT NOT NULL,
   transaction_data JSONB NOT NULL,
   created_at TIMESTAMPTZ DEFAULT NOW(),
@@ -126,7 +127,7 @@ CREATE TABLE transaction_cache (
 
 CREATE TABLE rewards (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  user_id UUID REFERENCES users(id) ON DELETE CASCADE,
+  user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
   promo_code TEXT UNIQUE NOT NULL,
   amount NUMERIC NOT NULL,
   currency TEXT NOT NULL DEFAULT 'USD',
@@ -137,7 +138,7 @@ CREATE TABLE rewards (
 
 CREATE TABLE deals (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  user_id UUID REFERENCES users(id) ON DELETE CASCADE,
+  user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
   title TEXT NOT NULL,
   description TEXT NOT NULL,
   merchant TEXT NOT NULL,
@@ -156,7 +157,7 @@ CREATE INDEX idx_deals_user_id ON deals(user_id);
 
 ## Layout
 
-```
+```text
 app/
   (auth)/        sign-in, sign-up
   (user)/        opt-in, transactions, rewards, deals
