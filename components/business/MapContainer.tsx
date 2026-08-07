@@ -261,7 +261,7 @@ export function MapContainer({ center, category, onAreaClick }: MapContainerProp
     const load = async () => {
       setDataMessage('Loading live demand…')
       try {
-        const response = await fetch('http://localhost:8000/api/mongo-data', {
+        const response = await fetch('/api/business/orders', {
           cache: 'no-store',
           signal: controller.signal,
         })
@@ -284,18 +284,22 @@ export function MapContainer({ center, category, onAreaClick }: MapContainerProp
         mapDataRef.current = nextData
         setMapData(nextData)
 
-        if (isFallback) {
-          setDataMessage('No live orders returned — showing representative sample data.')
+        if (payload?.live === false) {
+          setDataMessage(
+            'Analytics backend not connected — the demand heatmap is empty. See README to run it locally.'
+          )
+        } else if (isFallback) {
+          setDataMessage('No orders returned for this area.')
         } else {
           setDataMessage(null)
         }
       } catch (error) {
         if (controller.signal.aborted) return
-        console.warn('Failed to load Knot data', error)
+        console.warn('Failed to load order data', error)
         const fallbackData: MapData = { orders: [], stores: [], isFallback: true }
         mapDataRef.current = fallbackData
         setMapData(fallbackData)
-        setDataMessage('Live Knot data unavailable — showing representative sample data.')
+        setDataMessage('Could not load demand data.')
       }
     }
 

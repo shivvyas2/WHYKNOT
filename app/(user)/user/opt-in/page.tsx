@@ -3,17 +3,7 @@
 import { useState } from 'react'
 import { useKnotSDK } from '@/lib/knot/sdk'
 import { SuccessAnimation } from '@/components/user/SuccessAnimation'
-
-// Merchant IDs from Knot - Only DoorDash and Uber Eats
-const MERCHANT_IDS: Record<string, number> = {
-  doordash: 19,
-  ubereats: 36,
-}
-
-const MERCHANT_DISPLAY_NAMES: Record<string, string> = {
-  doordash: 'DoorDash',
-  ubereats: 'Uber Eats',
-}
+import { KNOT_MERCHANT_IDS as MERCHANT_IDS, MERCHANT_DISPLAY_NAMES } from '@/lib/constants'
 
 export default function OptInPage() {
   const [selectedMerchant, setSelectedMerchant] = useState<string | null>(null)

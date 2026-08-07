@@ -4,6 +4,7 @@ import { NextResponse, type NextRequest } from 'next/server'
 
 import { buildAreaSelectionFromData } from '@/lib/analytics/area'
 import { aggregateStores, parseOrders } from '@/lib/analytics/orders'
+import { fetchOrderData } from '@/lib/analytics/source'
 
 export async function GET(request: NextRequest) {
   try {
@@ -22,14 +23,16 @@ export async function GET(request: NextRequest) {
       )
     }
 
-    const response = await fetch('http://localhost:8000/api/mongo-data', { cache: 'no-store' })
-    if (!response.ok) {
-      console.error('Location analytics request failed:', response.status, response.statusText)
-      return NextResponse.json({ error: 'Failed to fetch live analytics data' }, { status: 502 })
+    const { orders: rawOrders, live } = await fetchOrderData()
+    if (!live) {
+      return NextResponse.json(
+        {
+          error: 'Analytics backend unavailable',
+          reason: 'analytics_backend_unavailable',
+        },
+        { status: 503 }
+      )
     }
-
-    const payload = await response.json()
-    const rawOrders = Array.isArray(payload?.data) ? payload.data : []
 
     const orders = parseOrders(rawOrders)
     const stores = aggregateStores(orders)
