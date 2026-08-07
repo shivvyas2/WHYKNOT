@@ -12,8 +12,10 @@ owners see aggregate demand on a map instead of guessing.
 
 **Live:** https://whyknot.vercel.app
 
-<!-- DEMO VIDEO: replace the line below with the uploaded walkthrough -->
-_Walkthrough video: coming — records the connect → sync → heatmap flow end to end._
+[![WhyKnot demo](https://img.youtube.com/vi/k9Om6UzmQh0/hqdefault.jpg)](https://www.youtube.com/watch?v=k9Om6UzmQh0)
+
+_Walkthrough recorded for the hackathon submission, uploaded by teammate
+[Vighanesh Gaund](https://www.youtube.com/@vighaneshramakantgaund6563)._
 
 The hosted demo runs without Supabase, so it uses a demo identity and skips
 sign-in. Everything that talks to Knot is real — see [Known gaps](#known-gaps) for
@@ -197,6 +199,20 @@ Built in about two days for a hackathon; these are the honest edges.
   and says so.
 - **Reward issuance isn't wired.** The `rewards` schema and UI exist; nothing
   writes to the table yet.
+
+## Team
+
+Built at a hackathon by four people:
+
+| | |
+|---|---|
+| [Shiv Vyas](https://github.com/shivvyas2) | Knot integration, consumer flows, app architecture |
+| [Henry Nguyen](https://github.com/henrynguyen50) | Business analytics |
+| [Vighanesh Gaund](https://github.com/vighanesh2) | Business analytics, demo |
+| [Rodolfo Gonzalez](https://github.com/rudyg16) | Business analytics |
+
+Everything under `lib/knot/` and `app/api/knot/` is mine end to end — `git log`
+on those paths returns a single author. The business-side analytics were shared.
 
 ## License
 
